@@ -1,0 +1,21 @@
+{
+    "short_name": "ens_lab",
+    "name": "Romi scanner at the ENS RDP (laboratory set-up)",
+    "description": "X-Carve CNC...",
+    "software_module": {
+        "id": "romiscanner.scan.Scan",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "parameters": {
+        "cnc": {
+            "module": "",
+            "parameters": {}
+        },
+        "gimbal": {
+            "module": "",
+            "parameters": {}
+        }
+    }
+}

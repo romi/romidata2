@@ -1,0 +1,14 @@
+{
+    "id": "empty",
+    "title": "Empty Title",
+    "description": "To be completed",
+    "people": [],
+    "cameras": [],
+    "scanning_devices": [],
+    "files": [],
+    "scans": [],
+    "analyses": [],
+    "experimental_factors": [],
+    "observation_units": [],
+    "scan_paths": []
+}

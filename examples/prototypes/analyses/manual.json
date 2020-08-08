@@ -1,0 +1,29 @@
+{
+    "id": "any",
+    "short_name": "manual",
+    "name": "Manual measurements",
+    "description": "The angles and internodes are measured manually.",
+    "scan_id": "",
+    "state": "Defined",
+
+    "observed_variables": [
+        {
+            "id": "fruit_angles",
+            "name": "inter-fruit angle",
+            "trait": "phyllotaxis",
+            "scale": "degree (angle)",
+            "time_scale": "NA"
+        },
+        {
+            "id": "fruit_internode_length",
+            "name": "internode distance",
+            "trait": "phyllotaxis",
+            "scale": "mm (internodes)",
+            "time_scale": "NA"
+        }
+    ],
+
+    "tasks": []
+}
+
+

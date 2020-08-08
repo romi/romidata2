@@ -1,0 +1,15 @@
+{
+    "id": "RDP:186AV.L1:plantID:date:ahp6",
+    "type": "individual plant",
+    "spatial_distribution": "NA",
+    "factor_values": {"genotype_ahp6_mutation": "ahp6"},
+    "samples": [
+        {
+            "id": "NA",
+            "short_name": "inflorescence_stem",
+            "description": "first order branches are pruned before acquisition",
+            "development_stage": "PO:0009049",
+            "anatomical_entity": "PO:0025104"
+        }
+    ]
+}

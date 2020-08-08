@@ -1,0 +1,9 @@
+{
+    "id": "ROMI",
+    "short_name": "romi",
+    "title": "ROMI Plant Phenotyping",
+    "description": "ROMI will develop an open and lightweight robotics platform for microfarms. This platform will harbor Machine Vision Systems to acquire indoor and in-field data of plant architecture. Advanced 3D analysis and modelling techniques will be developped and applied to precisely measure plant above ground architecture.",
+    "license": "CC BY-SA 4.0",
+    "people": [],
+    "studies": []
+}

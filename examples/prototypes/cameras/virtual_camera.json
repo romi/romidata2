@@ -1,0 +1,14 @@
+{
+    "short_name": "virtual_camera",
+    "name": "Virtual camera in Blender",
+    "description": "The camera is an ideal camera used in the virtual scanner in Blender",
+    "lens": "None",
+    "software_module": {
+        "id": "romiscanner.scan.XXX",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "parameters": {
+    }
+}

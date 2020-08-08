@@ -1,0 +1,14 @@
+{
+    "short_name": "sony_rx0",
+    "name": "Sony RX0",
+    "description": "1.0-inch type (0.52 inch x 0.35 inch) Exmor RS CMOS sensor, aspect ratio 3:2, Number of Pixels (Effective) Approx. 15.3 Megapixels",
+    "lens": "Fixed, ZEISS Tessar T* 24mm lens with F4.0 aperture",
+    "software_module": {
+        "id": "romiscanner.scan.XXX",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "parameters": {
+    }
+}

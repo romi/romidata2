@@ -1,0 +1,5 @@
+{
+    "short_name": "genotype_ahp6_mutation",
+    "description": "plants homozygous for the null allele ahp6-1",
+    "values": ["ahp6", "WT"]
+}

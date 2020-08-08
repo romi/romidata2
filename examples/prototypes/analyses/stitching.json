@@ -1,0 +1,28 @@
+{
+    "id": "any",
+    "short_name": "stitching",
+    "name": "2D image stitching",
+    "description": "...",
+    "scan_id": "",
+    "state": "Defined",
+    "observed_variables": [],
+    "tasks": [
+        {
+            "id": "any",
+            "short_name": "stitching",
+            "state": "Defined",
+            "software_module": {
+                "id": "?",
+                "version": "?",
+                "repository": "?",
+                "branch": "?"
+            },
+            "parameters": {},
+            "input_files": [],
+            "output_files": ["map", "mask"],
+            "log_file": ""
+        }
+    ]
+}
+
+

@@ -1,0 +1,161 @@
+{
+    "id": "any",
+    "short_name": "ml_pipe_v0.7",
+    "name": "Machine Learning Pipeline",
+    "description": "The ML pipeline uses a CNN to categorize images pixels in the 2D images into the following categories: stem, leaf, flower, fruit, peduncle, and background. It then constructs the visual hull taking into account the categories.",
+    "scan_id": "",
+    "state": "Defined",
+
+    "observed_variables": [
+        {
+            "id": "fruit_angles",
+            "name": "inter-fruit angle",
+            "trait": "phyllotaxis",
+            "scale": "degree (angle)",
+            "time_scale": "NA"
+        },
+        {
+            "id": "fruit_internode_length",
+            "name": "internode distance",
+            "trait": "phyllotaxis",
+            "scale": "mm (internodes)",
+            "time_scale": "NA"
+        }
+    ],
+
+    "tasks": [
+        {
+            "id": "any",
+            "short_name": "Colmap",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.colmap",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {
+                "matcher": "exhaustive",
+                "compute_dense": "false",
+                "cli_args": {
+                    "feature_extractor": [
+                        "--ImageReader.single_camera=1",
+                        "--SiftExtraction.use_gpu=1"],
+                    "exhaustive_matcher": [ "--SiftMatching.use_gpu=1" ],
+                    "model_aligner": ["--robust_alignment_max_error=10" ]
+                }
+            },
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "Undistorted",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.proc2d",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {},
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "Masks",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.proc2d",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {
+                "type": "linear",
+                "parameters": "[0,1,0]",
+                "dilation": 5,
+                "binarize": true,
+                "threshold": 0.3
+            },
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "Voxels",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.cl",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {
+                "multiclass": false,
+                "voxel_size": 1.0,
+                "type": "carving",
+                "use_colmap_poses": true,
+                "log": true
+            },
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "PointCloud",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.cl",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {
+                "level_set_value": 1.0,
+                "background_prior": -200.5,
+                "log": false
+            },
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "TreeGraph",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.cl",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {},
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        },
+        {
+            "id": "any",
+            "short_name": "AnglesAndInternodes",
+            "state": "Defined",
+            "software_module": {
+                "id": "romiscan.tasks.cl",
+                "version": "0.7",
+                "repository": "https://github.com/romi/romiscan",
+                "branch": "master"
+            },
+            "parameters": {},
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        }
+    ]
+}
+
+

@@ -1,0 +1,7 @@
+{
+    "short_name": "linear_4m",
+    "type": "linear",
+    "parameters": {
+        "length": 4
+    }
+}

@@ -1,0 +1,925 @@
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>API Reference</title>
+
+    <style media="screen">
+      .highlight table td { padding: 5px; }
+.highlight table pre { margin: 0; }
+.highlight .gh {
+  color: #999999;
+}
+.highlight .sr {
+  color: #f6aa11;
+}
+.highlight .go {
+  color: #888888;
+}
+.highlight .gp {
+  color: #555555;
+}
+.highlight .gs {
+}
+.highlight .gu {
+  color: #aaaaaa;
+}
+.highlight .nb {
+  color: #f6aa11;
+}
+.highlight .cm {
+  color: #75715e;
+}
+.highlight .cp {
+  color: #75715e;
+}
+.highlight .c1 {
+  color: #75715e;
+}
+.highlight .cs {
+  color: #75715e;
+}
+.highlight .c, .highlight .ch, .highlight .cd, .highlight .cpf {
+  color: #75715e;
+}
+.highlight .err {
+  color: #960050;
+}
+.highlight .gr {
+  color: #960050;
+}
+.highlight .gt {
+  color: #960050;
+}
+.highlight .gd {
+  color: #49483e;
+}
+.highlight .gi {
+  color: #49483e;
+}
+.highlight .ge {
+  color: #49483e;
+}
+.highlight .kc {
+  color: #66d9ef;
+}
+.highlight .kd {
+  color: #66d9ef;
+}
+.highlight .kr {
+  color: #66d9ef;
+}
+.highlight .no {
+  color: #66d9ef;
+}
+.highlight .kt {
+  color: #66d9ef;
+}
+.highlight .mf {
+  color: #ae81ff;
+}
+.highlight .mh {
+  color: #ae81ff;
+}
+.highlight .il {
+  color: #ae81ff;
+}
+.highlight .mi {
+  color: #ae81ff;
+}
+.highlight .mo {
+  color: #ae81ff;
+}
+.highlight .m, .highlight .mb, .highlight .mx {
+  color: #ae81ff;
+}
+.highlight .sc {
+  color: #ae81ff;
+}
+.highlight .se {
+  color: #ae81ff;
+}
+.highlight .ss {
+  color: #ae81ff;
+}
+.highlight .sd {
+  color: #e6db74;
+}
+.highlight .s2 {
+  color: #e6db74;
+}
+.highlight .sb {
+  color: #e6db74;
+}
+.highlight .sh {
+  color: #e6db74;
+}
+.highlight .si {
+  color: #e6db74;
+}
+.highlight .sx {
+  color: #e6db74;
+}
+.highlight .s1 {
+  color: #e6db74;
+}
+.highlight .s, .highlight .sa, .highlight .dl {
+  color: #e6db74;
+}
+.highlight .na {
+  color: #a6e22e;
+}
+.highlight .nc {
+  color: #a6e22e;
+}
+.highlight .nd {
+  color: #a6e22e;
+}
+.highlight .ne {
+  color: #a6e22e;
+}
+.highlight .nf, .highlight .fm {
+  color: #a6e22e;
+}
+.highlight .vc {
+  color: #ffffff;
+}
+.highlight .nn {
+  color: #ffffff;
+}
+.highlight .ni {
+  color: #ffffff;
+}
+.highlight .bp {
+  color: #ffffff;
+}
+.highlight .vg {
+  color: #ffffff;
+}
+.highlight .vi {
+  color: #ffffff;
+}
+.highlight .nv, .highlight .vm {
+  color: #ffffff;
+}
+.highlight .w {
+  color: #ffffff;
+}
+.highlight {
+  color: #ffffff;
+}
+.highlight .n, .highlight .py, .highlight .nx {
+  color: #ffffff;
+}
+.highlight .nl {
+  color: #f92672;
+}
+.highlight .ow {
+  color: #f92672;
+}
+.highlight .nt {
+  color: #f92672;
+}
+.highlight .k, .highlight .kv {
+  color: #f92672;
+}
+.highlight .kn {
+  color: #f92672;
+}
+.highlight .kp {
+  color: #f92672;
+}
+.highlight .o {
+  color: #f92672;
+}
+    </style>
+    <style media="print">
+      * {
+        -webkit-transition:none!important;
+        transition:none!important;
+      }
+      .highlight table td { padding: 5px; }
+.highlight table pre { margin: 0; }
+.highlight, .highlight .w {
+  color: #586e75;
+}
+.highlight .err {
+  color: #002b36;
+  background-color: #dc322f;
+}
+.highlight .c, .highlight .ch, .highlight .cd, .highlight .cm, .highlight .cpf, .highlight .c1, .highlight .cs {
+  color: #657b83;
+}
+.highlight .cp {
+  color: #b58900;
+}
+.highlight .nt {
+  color: #b58900;
+}
+.highlight .o, .highlight .ow {
+  color: #93a1a1;
+}
+.highlight .p, .highlight .pi {
+  color: #93a1a1;
+}
+.highlight .gi {
+  color: #859900;
+}
+.highlight .gd {
+  color: #dc322f;
+}
+.highlight .gh {
+  color: #268bd2;
+  background-color: #002b36;
+  font-weight: bold;
+}
+.highlight .k, .highlight .kn, .highlight .kp, .highlight .kr, .highlight .kv {
+  color: #6c71c4;
+}
+.highlight .kc {
+  color: #cb4b16;
+}
+.highlight .kt {
+  color: #cb4b16;
+}
+.highlight .kd {
+  color: #cb4b16;
+}
+.highlight .s, .highlight .sa, .highlight .sb, .highlight .sc, .highlight .dl, .highlight .sd, .highlight .s2, .highlight .sh, .highlight .sx, .highlight .s1 {
+  color: #859900;
+}
+.highlight .sr {
+  color: #2aa198;
+}
+.highlight .si {
+  color: #d33682;
+}
+.highlight .se {
+  color: #d33682;
+}
+.highlight .nn {
+  color: #b58900;
+}
+.highlight .nc {
+  color: #b58900;
+}
+.highlight .no {
+  color: #b58900;
+}
+.highlight .na {
+  color: #268bd2;
+}
+.highlight .m, .highlight .mb, .highlight .mf, .highlight .mh, .highlight .mi, .highlight .il, .highlight .mo, .highlight .mx {
+  color: #859900;
+}
+.highlight .ss {
+  color: #859900;
+}
+    </style>
+    <link href="stylesheets/screen-7944df74.css" rel="stylesheet" media="screen" />
+    <link href="stylesheets/print-953e3353.css" rel="stylesheet" media="print" />
+      <script src="javascripts/all_nosearch-ea811c3e.js"></script>
+
+    <script>
+      $(function() { setupCodeCopy(); });
+    </script>
+  </head>
+
+  <body class="index" data-languages="[&quot;shell&quot;]">
+    <a href="#" id="nav-button">
+      <span>
+        NAV
+        <img src="images/navbar-cad8cdcb.png" alt="" />
+      </span>
+    </a>
+    <div class="toc-wrapper">
+      <img src="images/logo-0157d505.png" class="logo" alt="" />
+        <div class="lang-selector">
+              <a href="#" data-language-name="shell">shell</a>
+        </div>
+      <ul id="toc" class="toc-list-h1">
+          <li>
+            <a href="#introduction" class="toc-h1 toc-link" data-title="Introduction">Introduction</a>
+          </li>
+          <li>
+            <a href="#authentication" class="toc-h1 toc-link" data-title="Authentication">Authentication</a>
+          </li>
+          <li>
+            <a href="#farms" class="toc-h1 toc-link" data-title="Farms">Farms</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-all-farms" class="toc-h2 toc-link" data-title="Get All Farms">Get All Farms</a>
+                  </li>
+                  <li>
+                    <a href="#get-a-specific-farm" class="toc-h2 toc-link" data-title="Get a Specific Farm">Get a Specific Farm</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
+            <a href="#zones" class="toc-h1 toc-link" data-title="Zones">Zones</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-a-specific-zone" class="toc-h2 toc-link" data-title="Get a Specific Zone">Get a Specific Zone</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
+            <a href="#scans" class="toc-h1 toc-link" data-title="Scans">Scans</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-a-specific-scan" class="toc-h2 toc-link" data-title="Get a Specific Scan">Get a Specific Scan</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
+            <a href="#analyses" class="toc-h1 toc-link" data-title="Analyses">Analyses</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-a-specific-analysis" class="toc-h2 toc-link" data-title="Get a Specific Analysis">Get a Specific Analysis</a>
+                  </li>
+                  <li>
+                    <a href="#the-stitching-analysis" class="toc-h2 toc-link" data-title="The stitching analysis">The <code>stitching</code> analysis</a>
+                  </li>
+                  <li>
+                    <a href="#the-plant_analysis-data" class="toc-h2 toc-link" data-title="The plant_analysis data">The <code>plant_analysis</code> data</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
+            <a href="#images" class="toc-h1 toc-link" data-title="Images">Images</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-an-image" class="toc-h2 toc-link" data-title="Get an Image">Get an Image</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
+            <a href="#errors" class="toc-h1 toc-link" data-title="Errors">Errors</a>
+          </li>
+      </ul>
+    </div>
+    <div class="page-wrapper">
+      <div class="dark-box"></div>
+      <div class="content">
+        <h1 id='introduction'>Introduction</h1>
+<p>TODO</p>
+<h1 id='authentication'>Authentication</h1>
+<p>No authentication is required, yet.</p>
+<h1 id='farms'>Farms</h1><h2 id='get-all-farms'>Get All Farms</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/farms"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">[</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dszphw4i"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"joes_farm"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe's Farm"</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"95vaybgy"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jennys"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jenny's Organic Market Farm"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></code></pre></div>
+<p>This endpoint retrieves the list of all the farms in the database.</p>
+<h3 id='http-request'>HTTP Request</h3>
+<p><code>GET http://example.com/farms</code></p>
+<h3 id='query-parameters'>Query Parameters</h3>
+<p>None</p>
+<h2 id='get-a-specific-farm'>Get a Specific Farm</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/farms/95vaybgy"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"95vaybgy"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jennys"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jenny's Organic Market Farm"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"We're producing the tastiests organic vegetables in the valley since 1984."</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"license"</span><span class="p">:</span><span class="w"> </span><span class="s2">"CC BY-SA 4.0"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"people"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jenny"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jenny L. Sunburn"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jenny.Sunburn@example.com"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"affiliation"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cxjqd5z0"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"role"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Crop Manager"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"zones"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jxjecsik"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"parcel_south"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>This endpoint retrieves data of a specific farm. The returned data
+includes the following fields:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>id</code></td>
+<td>The IDs of the farm.</td>
+</tr>
+<tr>
+<td><code>short_name</code>, <code>name</code>, <code>description</code></td>
+<td>The short name, the free-form, long name, and a longer description of the farm.</td>
+</tr>
+<tr>
+<td><code>people</code></td>
+<td>The list of people associated with this farm.</td>
+</tr>
+<tr>
+<td><code>zones</code></td>
+<td>The list of zones defined by this farm.</td>
+</tr>
+</tbody></table>
+<h3 id='http-request-2'>HTTP Request</h3>
+<p><code>GET http://example.com/farms/&lt;FarmID&gt;</code></p>
+<h3 id='url-parameters'>URL Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>FarmID</td>
+<td>The ID of the farm</td>
+</tr>
+</tbody></table>
+<h1 id='zones'>Zones</h1>
+<p>A zone is an area in the farm. There is no specification on how small
+or how large a zone should be. It is up to the farmer&#39;s discretion to
+organise the farm into zones. </p>
+<h2 id='get-a-specific-zone'>Get a Specific Zone</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/farms/95vaybgy/zones/jxjecsik"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jxjecsik"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"farm"</span><span class="p">:</span><span class="w"> </span><span class="s2">"95vaybgy"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"parcel_south"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"scans"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"lddu2z2k"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2019-04-16T12:00:00+02:00"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"msyjy6ar"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2019-04-17T12:00:00+02:00"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ribqb9he"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2019-04-18T12:00:00+02:00"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>This endpoint retrieves data of a specific farm. The returned data
+includes the following fields:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>id</code> <code>farm</code></td>
+<td>The IDs of the zone and farm, respectively.</td>
+</tr>
+<tr>
+<td><code>short_name</code></td>
+<td>The short name of the zone.</td>
+</tr>
+<tr>
+<td><code>scans</code></td>
+<td>The list of scans performed in this zone.</td>
+</tr>
+</tbody></table>
+<h3 id='http-request-3'>HTTP Request</h3>
+<p><code>GET http://example.com/farms/&lt;FarmID&gt;/zones/&lt;ZoneID&gt;</code></p>
+<h3 id='url-parameters-2'>URL Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>FarmID</td>
+<td>The ID of the farm</td>
+</tr>
+<tr>
+<td>ZoneID</td>
+<td>The ID of the zone</td>
+</tr>
+</tbody></table>
+<h1 id='scans'>Scans</h1>
+<p>Scans are a special operation inside a zone. Using a scanning device
+(drone, cablebot, rover, handheld camera...), a series of images is
+taken in the zone. These images can then be analysed to extract useful
+information, such as the list of individual plants and their sizes.</p>
+<h2 id='get-a-specific-scan'>Get a Specific Scan</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/farms/95vaybgy/zones/jxjecsik/scans/lddu2z2k"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"lddu2z2k"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"farm"</span><span class="p">:</span><span class="w"> </span><span class="s2">"95vaybgy"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"zone"</span><span class="p">:</span><span class="w"> </span><span class="s2">"jxjecsik"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2019-04-16T12:00:00+02:00"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"images"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="s2">"fls2y871"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"8c6xc9c7"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"59djet16"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"..."</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"locations"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="s2">"scanpath"</span><span class="err">:</span><span class="w"> </span><span class="s2">"TODO"</span><span class="w">
+  </span><span class="p">],</span><span class="w">
+  </span><span class="nl">"analyses"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"esk57bkz"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stitching"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2D image stitching"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Finished"</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"wg44993j"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"plant_analysis"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plant Analysis"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Finished"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>This endpoint retrieves data of a specific scan that was performed of a zone. The returned data includes the following fields:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>id</code>, <code>zone</code>, <code>farm</code></td>
+<td>The IDs of the analysis, zone, and farm, respectively.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>The date at which the scan was taken, in the ISO 8601 format.</td>
+</tr>
+<tr>
+<td><code>images</code></td>
+<td>An array with the IDs of all the images that were taking during the scan.</td>
+</tr>
+<tr>
+<td><code>analyses</code></td>
+<td>An array with all the analyses that have been performed using the scan data.</td>
+</tr>
+</tbody></table>
+
+<p>For farms, the following two analysis are noteworthy:</p>
+
+<table><thead>
+<tr>
+<th>Short Name</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>stitching</td>
+<td>This analysis stitches all the images into one single, large image of the zone.</td>
+</tr>
+<tr>
+<td>plant_analysis</td>
+<td>The analysis detects the individual plants and their positions, and gives them a unique ID throughout subsequent scans.</td>
+</tr>
+</tbody></table>
+
+<p>Both analyses are detaild further below.</p>
+<h3 id='http-request-4'>HTTP Request</h3>
+<p><code>GET http://example.com/farms/&lt;FarmID&gt;/zones/&lt;ZoneID&gt;/scans/&lt;ScanID&gt;</code></p>
+<h3 id='url-parameters-3'>URL Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>FarmID</td>
+<td>The ID of the farm</td>
+</tr>
+<tr>
+<td>ZoneID</td>
+<td>The ID of the zone</td>
+</tr>
+<tr>
+<td>ScanID</td>
+<td>The ID of the scan</td>
+</tr>
+</tbody></table>
+<h1 id='analyses'>Analyses</h1>
+<p>Analysis provide useful information for a zone. In many cases, the
+analyses use the image data of a scan (directly or indirectly).</p>
+<h2 id='get-a-specific-analysis'>Get a Specific Analysis</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/farms/95vaybgy/zones/jxjecsik/scans/lddu2z2k"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"esk57bkz"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stitching"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2D image stitching"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Finished"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"results"</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>This endpoint retrieves data of a specific analysis. The returned data
+includes the following fields:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>id</code></td>
+<td>The immutable ID of the analysis.</td>
+</tr>
+<tr>
+<td><code>short_name</code>, <code>name</code>, <code>description</code></td>
+<td>The short name, the free-form, long name, and a longer description.</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>The state of the analysis. Can be one of &quot;Defined&quot;, &quot;Running&quot;, &quot;Finished&quot;, or &quot;Error&quot;.</td>
+</tr>
+<tr>
+<td><code>results</code></td>
+<td>A JSON dictionnary that contains the analysis-specific results of the analysis.</td>
+</tr>
+</tbody></table>
+<h3 id='http-request-5'>HTTP Request</h3>
+<p><code>GET http://example.com/farms/&lt;FarmID&gt;/zones/&lt;ZoneID&gt;/analyses/&lt;AnalysisID&gt;</code></p>
+<h3 id='url-parameters-4'>URL Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>FarmID</td>
+<td>The ID of the farm</td>
+</tr>
+<tr>
+<td>ZoneID</td>
+<td>The ID of the zone</td>
+</tr>
+<tr>
+<td>AnalysisID</td>
+<td>The ID of the analysis</td>
+</tr>
+</tbody></table>
+<h2 id='the-stitching-analysis'>The <code>stitching</code> analysis</h2>
+<blockquote>
+<p>The stitching analysis returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"esk57bkz"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stitching"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2D image stitching"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Finished"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"results"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"map"</span><span class="p">:</span><span class="w"> </span><span class="s2">"hwolyikg"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"width"</span><span class="p">:</span><span class="w"> </span><span class="mi">2300</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"height"</span><span class="p">:</span><span class="w"> </span><span class="mi">8609</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"mask"</span><span class="p">:</span><span class="w"> </span><span class="s2">"g4iifvr9"</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>The <code>results</code> section of a stitching analysis contains the following data:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>map</code></td>
+<td>The ID of the stitched image.</td>
+</tr>
+<tr>
+<td><code>mask</code></td>
+<td>The ID of the black-and-white stitched image mask (plants: white, soil: black).</td>
+</tr>
+<tr>
+<td><code>width</code>, <code>height</code></td>
+<td>The width and height of the map and mask.</td>
+</tr>
+</tbody></table>
+<h2 id='the-plant_analysis-data'>The <code>plant_analysis</code> data</h2>
+<blockquote>
+<p>The <code>plant_analysis</code> returns JSON structured like this:</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"wg44993j"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"short_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"plant_analysis"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plant Analysis"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Finished"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"results"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"plants"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+      </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"image"</span><span class="p">:</span><span class="w"> </span><span class="s2">"wrdbyald"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"location"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+          </span><span class="mf">277.70588235294116</span><span class="p">,</span><span class="w">
+          </span><span class="mf">5696.176470588235</span><span class="w">
+        </span><span class="p">],</span><span class="w">
+        </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"PLA"</span><span class="p">:</span><span class="w"> </span><span class="mf">409.18415625</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"mask"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bgg35jv8"</span><span class="w">
+      </span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"image"</span><span class="p">:</span><span class="w"> </span><span class="s2">"3yhukq53"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"location"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+          </span><span class="mf">1381.2307692307693</span><span class="p">,</span><span class="w">
+          </span><span class="mf">5656.4358974358975</span><span class="w">
+        </span><span class="p">],</span><span class="w">
+        </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"PLA"</span><span class="p">:</span><span class="w"> </span><span class="mf">1088.7001875</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"mask"</span><span class="p">:</span><span class="w"> </span><span class="s2">"qxl3dtpj"</span><span class="w">
+      </span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"image"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"location"</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span><span class="w">
+        </span><span class="nl">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">".."</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"PLA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"mask"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div>
+<p>The results section of the plant analysis contains the <code>plants</code> array
+with information on all the plants that were detected in the scan. For
+each plant, the following data is available:</p>
+
+<table><thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td><code>id</code></td>
+<td>The unique ID of the plant.</td>
+</tr>
+<tr>
+<td><code>image</code>, <code>mask</code></td>
+<td>The cropped image of the plant and its mask.</td>
+</tr>
+<tr>
+<td><code>location</code></td>
+<td>The x and y offset of the plant in the stitched map, in pixels.</td>
+</tr>
+<tr>
+<td><code>PLA</code></td>
+<td>The Projected Leaf Area (PLA) the plant in pixels. The PLA is a proxy measure of the plants size.</td>
+</tr>
+</tbody></table>
+<h1 id='images'>Images</h1>
+<p>All images of the scans and all images produced by various analyses
+are stored per zone. To uniquely identify an image, you need the
+farm ID, the zone ID, and the image ID.</p>
+<h2 id='get-an-image'>Get an Image</h2><div class="highlight"><pre class="highlight shell tab-shell"><code>curl <span class="s2">"http://example.com/images/95vaybgy/jxjecsik/3yhukq53?size=thumb"</span>
+</code></pre></div>
+<blockquote>
+<p>The above command returns the image scaled to the requested size.</p>
+</blockquote>
+<h3 id='http-request-6'>HTTP Request</h3>
+<p><code>GET http://example.com/images/&lt;FarmID&gt;/&lt;ZoneID&gt;/&lt;ImageID&gt;</code></p>
+<h3 id='url-parameters-5'>URL Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>FarmID</td>
+<td>The ID of the farm</td>
+</tr>
+<tr>
+<td>ZoneID</td>
+<td>The ID of the zone</td>
+</tr>
+<tr>
+<td>ImageID</td>
+<td>The ID of the image</td>
+</tr>
+</tbody></table>
+<h3 id='query-parameters-2'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>size</td>
+<td>thumb</td>
+<td>Defines the size of the image to be returned. The following options are currently available: &#39;thumb&#39; (max. 150x150), &#39;large&#39; (max. 1500x1500), and &#39;orig&#39; (original size).</td>
+</tr>
+</tbody></table>
+<h1 id='errors'>Errors</h1>
+<aside class="notice">
+This error section is stored in a separate file in <code>includes/_errors.md</code>. Slate allows you to optionally separate out your docs into many files...just save them to the <code>includes</code> folder and add them to the top of your <code>index.md</code>'s frontmatter. Files are included in the order listed.
+</aside>
+
+<p>The Kittn API uses the following error codes:</p>
+
+<table><thead>
+<tr>
+<th>Error Code</th>
+<th>Meaning</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>400</td>
+<td>Bad Request -- Your request is invalid.</td>
+</tr>
+<tr>
+<td>401</td>
+<td>Unauthorized -- Your API key is wrong.</td>
+</tr>
+<tr>
+<td>403</td>
+<td>Forbidden -- The kitten requested is hidden for administrators only.</td>
+</tr>
+<tr>
+<td>404</td>
+<td>Not Found -- The specified kitten could not be found.</td>
+</tr>
+<tr>
+<td>405</td>
+<td>Method Not Allowed -- You tried to access a kitten with an invalid method.</td>
+</tr>
+<tr>
+<td>406</td>
+<td>Not Acceptable -- You requested a format that isn&#39;t json.</td>
+</tr>
+<tr>
+<td>410</td>
+<td>Gone -- The kitten requested has been removed from our servers.</td>
+</tr>
+<tr>
+<td>418</td>
+<td>I&#39;m a teapot.</td>
+</tr>
+<tr>
+<td>429</td>
+<td>Too Many Requests -- You&#39;re requesting too many kittens! Slow down!</td>
+</tr>
+<tr>
+<td>500</td>
+<td>Internal Server Error -- We had a problem with our server. Try again later.</td>
+</tr>
+<tr>
+<td>503</td>
+<td>Service Unavailable -- We&#39;re temporarily offline for maintenance. Please try again later.</td>
+</tr>
+</tbody></table>
+
+      </div>
+      <div class="dark-box">
+          <div class="lang-selector">
+                <a href="#" data-language-name="shell">shell</a>
+          </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+    "short_name": "virtual_scanner",
+    "name": "The virtual scanner based on Blender",
+    "description": "...",
+    "parameters": {
+        "cnc": {
+            "module": "",
+            "parameters": {}
+        },
+        "gimbal": {
+            "module": "",
+            "parameters": {}
+        }
+    },
+    "software_module": {
+        "id": "romiscanner.scan.Scan",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    }
+}

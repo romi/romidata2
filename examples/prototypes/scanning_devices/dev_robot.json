@@ -1,0 +1,21 @@
+{
+    "short_name": "dev_robot",
+    "name": "Romi Rover on rails at Chatelain (development set-up)",
+    "description": "Light-weight frame with bicycle wheels, X-Carve, RealSense camera",
+    "software_module": {
+        "id": "romiscanner.scan.Scan",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "parameters": {
+        "cnc": {
+            "module": "",
+            "parameters": {}
+        },
+        "gimbal": {
+            "module": "",
+            "parameters": {}
+        }
+    }
+}

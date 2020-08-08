@@ -1,0 +1,14 @@
+{
+    "short_name": "realsense",
+    "name": "Intel RealSense D435",
+    "description": "",
+    "lens": "",
+    "software_module": {
+        "id": "romiscanner.scan.XXX",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "parameters": {
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "short_name": "circular_72",
+    "type": "circular",
+    "parameters": {
+        "xc": 0.4,
+        "yc": 0.4,
+        "z": 0.0,
+        "radius": 0.35,
+        "num_points": 72,
+        "tilt": 0.45
+    }
+}
