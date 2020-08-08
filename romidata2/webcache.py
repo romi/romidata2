@@ -144,6 +144,8 @@ class WebCache():
         image = Image.open(BytesIO(image))
         image.load()
         image = self.__image_resize(image, maxsize)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
         image.save(dst, "JPEG", quality=84)
         
         print("Converted (%s:%s:%s) to %s, size %d" % (top_id, sub_id, file_id, dst, maxsize))

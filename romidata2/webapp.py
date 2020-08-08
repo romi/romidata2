@@ -115,6 +115,8 @@ class AnalysisInfo(RomiResource):
         results = self.db.file_read_json(analysis.results_file)
         return {
             "id": analysis.id,
+            "farm": farm.id,
+            "zone": zone.id,
             "short_name": analysis.short_name,
             "name": analysis.name,
             "description": analysis.description,
