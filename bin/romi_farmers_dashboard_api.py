@@ -19,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--type", required=True,
                         help="Either 'farms' or 'investigations'")
     
+    args = parser.parse_args()
     db = FarmDatabase(args.db)
     cache = WebCache(db, args.type, args.cache)
     app = FarmWebApp(db, cache)
