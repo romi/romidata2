@@ -117,6 +117,7 @@ class AnalysisInfo(RomiResource):
             "id": analysis.id,
             "farm": farm.id,
             "zone": zone.id,
+            "scan": analysis.scan_id,
             "short_name": analysis.short_name,
             "name": analysis.name,
             "description": analysis.description,

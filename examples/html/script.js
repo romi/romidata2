@@ -1,17 +1,15 @@
 
 server = null;
 
-function loadContent(event)
+function loadContent(url)
 {
-    server = new RomiDataServer("http://0.0.0.0:5000");
+    server = new RomiDataServer(url);
     displayFarms();
 }
 
-function Closure(callback, arg1, arg2, arg3)
+function closure(callback, arg1, arg2, arg3)
 {
-    this.invoke = function() {
-        callback(arg1, arg2, arg3);
-    }
+    return function() { callback(arg1, arg2, arg3); };
 }
 
 function makeEventLink(anchorText, handler, className) 
@@ -26,7 +24,12 @@ function makeEventLink(anchorText, handler, className)
     return a;
 }
 
-function makeText(text, className) 
+function makeText(text) 
+{
+    return document.createTextNode(text);
+}
+
+function makeParagraph(text, className) 
 {
     var t = document.createElement("P");
     t.className = className;
@@ -75,24 +78,47 @@ function displayFarms()
     server.getFarms(insertFarms);
 }
 
+function insertNavigation(div, farmid, zoneid, scanid)
+{
+    nav = makeParagraph("", "nav");
+    nav.appendChild(makeText("Navigation ")); 
+    nav.appendChild(makeEventLink("Index",
+                                  displayFarms,
+                                  "nav-link"))
+    if (farmid)
+        nav.appendChild(makeEventLink("Farm",
+                                      closure(displayFarm, farmid),
+                                      "nav-link")) 
+    if (zoneid)
+        nav.appendChild(makeEventLink("Zone",
+                                      closure(displayZone, farmid, zoneid),
+                                      "nav-link")) 
+    if (scanid)
+        nav.appendChild(makeEventLink("Scan",
+                                      closure(displayScan, farmid, zoneid, scanid),
+                                      "nav-link")) 
+    content.appendChild(nav);
+}
+
 function insertStitchingAnalysis(analysis)
 {
     clearContent();
     content = document.getElementById("content");
+    insertNavigation(content, analysis.farm, analysis.zone, analysis.scan);
     
-    t = makeText(analysis.name, "analysis-name") 
+    t = makeParagraph(analysis.name, "analysis-name") 
     content.appendChild(t);
     
-    t = makeText("Analysis '" + analysis.short_name + "' of zone '" + analysis.zone + "'", "analysis-summary") 
+    t = makeParagraph("Analysis '" + analysis.short_name + "' of zone '" + analysis.zone + "'", "analysis-summary") 
     content.appendChild(t);
     
-    t = makeText("Description: " + analysis.description, "analysis-description") 
+    t = makeParagraph("Description: " + analysis.description, "analysis-description") 
     content.appendChild(t);
     
-    t = makeText("State: " + analysis.state, "analysis-state") 
+    t = makeParagraph("State: " + analysis.state, "analysis-state") 
     content.appendChild(t);
     
-    t = makeText("Results", "analysis-results-title") 
+    t = makeParagraph("Results", "analysis-results-title") 
     content.appendChild(t);
 
     table = document.createElement("TABLE");
@@ -115,7 +141,7 @@ function insertStitchingAnalysis(analysis)
     table.appendChild(row);
     content.appendChild(table);
 
-    t = makeText("Results (rwa)", "analysis-results-title") 
+    t = makeParagraph("Results (rwa)", "analysis-results-title") 
     content.appendChild(t);
     
     code = document.createElement("PRE");
@@ -155,20 +181,21 @@ function insertAnyAnalysis(analysis)
 {
     clearContent();
     content = document.getElementById("content");
+    insertNavigation(content, analysis.farm, analysis.zone, analysis.scan);
     
-    t = makeText(analysis.name, "analysis-name") 
+    t = makeParagraph(analysis.name, "analysis-name") 
     content.appendChild(t);
     
-    t = makeText("Analysis '" + analysis.short_name + "' of zone '" + analysis.zone + "'", "analysis-summary") 
+    t = makeParagraph("Analysis '" + analysis.short_name + "' of zone '" + analysis.zone + "'", "analysis-summary") 
     content.appendChild(t);
     
-    t = makeText("Description: " + analysis.description, "analysis-description") 
+    t = makeParagraph("Description: " + analysis.description, "analysis-description") 
     content.appendChild(t);
     
-    t = makeText("State: " + analysis.state, "analysis-state") 
+    t = makeParagraph("State: " + analysis.state, "analysis-state") 
     content.appendChild(t);
     
-    t = makeText("Results", "analysis-results-title") 
+    t = makeParagraph("Results", "analysis-results-title") 
     content.appendChild(t);
     
     code = document.createElement("PRE");
@@ -195,23 +222,24 @@ function insertScan(userData, scan)
 
     clearContent();
     content = document.getElementById("content");
+    insertNavigation(content, scan.farm, scan.zone, null);
     
-    t = makeText("Scan of zone " + scan.zone + " at " + scan.date, "scan-zone-title") 
+    t = makeParagraph("Scan of zone " + scan.zone + " at " + scan.date, "scan-zone-title") 
     content.appendChild(t);
     
-    t = makeText("Available analyses", "scans-analysis-title") 
+    t = makeParagraph("Available analyses", "scans-analysis-title") 
     content.appendChild(t);
 
     for (var i = 0; i < scan.analyses.length; i++) {
         analysis = scan.analyses[i];
         a = makeEventLink(analysis.name + " (" + analysis.state + ")",
-                          new Closure(displayAnalysis, scan.farm, scan.zone, analysis.id).invoke,
+                          closure(displayAnalysis, scan.farm, scan.zone, analysis.id),
                           "analysis-name"); 
         content.appendChild(a);
         content.appendChild(document.createElement("BR"));
     }
     
-    t = makeText("Images", "scans-images-title") 
+    t = makeParagraph("Images", "scans-images-title") 
     content.appendChild(t);
 
     table = document.createElement("TABLE");
@@ -237,14 +265,16 @@ function insertZone(userData, zone)
 
     clearContent();
     content = document.getElementById("content");
-    t = makeText(zone.short_name, "zone-name") 
+    insertNavigation(content, zone.farm, null, null);
+    
+    t = makeParagraph(zone.short_name, "zone-name") 
     content.appendChild(t);
-    t = makeText("Scans", "zones-scans-title") 
+    t = makeParagraph("Scans", "zones-scans-title") 
     content.appendChild(t);
     for (var i = 0; i < zone.scans.length; i++) {
         scan = zone.scans[i];
         a = makeEventLink(scan.date,
-                          new Closure(displayScan, zone.farm, zone.id, scan.id).invoke,
+                          closure(displayScan, zone.farm, zone.id, scan.id),
                           "scan-name"); 
         content.appendChild(a);
         content.appendChild(document.createElement("BR"));
@@ -257,16 +287,18 @@ function insertFarm(userData, farm)
     
     clearContent();
     content = document.getElementById("content");
-    t = makeText(farm.name, "farm-name") 
+    insertNavigation(content, null, null, null);
+    
+    t = makeParagraph(farm.name, "farm-name") 
     content.appendChild(t);
-    t = makeText(farm.description, "farm-description") 
+    t = makeParagraph(farm.description, "farm-description") 
     content.appendChild(t);
-    t = makeText("Zones", "farm-zones-title") 
+    t = makeParagraph("Zones", "farm-zones-title") 
     content.appendChild(t);
     for (var i = 0; i < farm.zones.length; i++) {
         zone = farm.zones[i];
         a = makeEventLink(zone.short_name,
-                          new Closure(displayZone, farm.id, zone.id).invoke,
+                          closure(displayZone, farm.id, zone.id),
                           "zone-name"); 
         content.appendChild(a);
         content.appendChild(document.createElement("BR"));
@@ -282,7 +314,7 @@ function insertFarms(userData, farms)
     for (var i = 0; i < farms.length; i++) {
         farm = farms[i];
         a = makeEventLink(farm.name,
-                          new Closure(displayFarm, farm.id).invoke,
+                          closure(displayFarm, farm.id),
                           "farm-name"); 
         content.appendChild(a);
         content.appendChild(document.createElement("BR"));
