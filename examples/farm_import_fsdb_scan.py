@@ -148,6 +148,10 @@ if __name__ == "__main__":
         newscan.date = create_date(year, month, day)
         
         images_fileset = fsdb_scan.get_fileset("images")
+        if not images_fileset:
+            images_fileset = fsdb_scan.get_fileset("raw_data")
+        if not images_fileset:
+            raise ValueError("Can't find images directory")
         images = images_fileset.get_files()
         for image in images:
             data = image.read_raw()
