@@ -23,4 +23,4 @@ if __name__ == "__main__":
     db = FarmDatabase(args.db)
     cache = WebCache(db, args.type, args.cache)
     app = FarmWebApp(db, cache)
-    app.run(host='0.0.0.0')
+    app.run(host='127.0.0.1', port=5001)
