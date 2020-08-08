@@ -31,7 +31,8 @@ python -m pip install Pillow
 
 ## Examples
 
-See examples/ for some example usages.
+See the examples/*.py script for some example in Python.
+See examples/html/ for a minima example of the REST API in Javascript.
 
 ## Documentation
 
