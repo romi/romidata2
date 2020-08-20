@@ -23,7 +23,7 @@ Examples
 >>> from romidata2.webcache import WebCache
 >>> db = FarmDatabase("demo/db")
 >>> cache = WebCache(db, "farms", "/tmp/romicache")
->>> binary_image, mimetype = webcache.image_data('farm000', 'zone000', 'image000', 'thumb')
+>>> binary_image, mimetype = webcache.image_data('image000', 'thumb')
 
 """
 import os
@@ -65,17 +65,13 @@ class WebCache():
         self.__path = path
         os.makedirs(self.__path, exist_ok=True)
 
-    def __hash(self, resource_type, top_id, sub_id, file_id, size):
+    def __hash(self, resource_type, file_id, size):
         """Computes a SHA1 hash.
     
         Parameters
         ----------
         resource_type: str
             One of "image", ...
-        top_id: str
-            The ID of the farm or investigation
-        sub_id: str
-            The ID of the zone or study
         file_id: str
             The ID of the file in the fileset
         size: str
@@ -83,27 +79,23 @@ class WebCache():
 
         """
         m = hashlib.sha1()
-        key = "%s|%s|%s|%s|%s" % (resource_type, top_id, sub_id, file_id, size)
+        key = "%s|%s|%s" % (resource_type, file_id, size)
         m.update(key.encode('utf-8'))
         return m.hexdigest()
 
     # Image
-    def __image_hash(self, top_id, sub_id, file_id, size):
+    def __image_hash(self, file_id, size):
         """Compute a hash key for the image.
     
         Parameters
         ----------
-        top_id: str
-            The ID of the farm or investigation
-        sub_id: str
-            The ID of the zone or study
         file_id: str
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
 
         """
-        return self.__hash("image", top_id, sub_id, file_id, size)
+        return self.__hash("image", file_id, size)
 
     def __image_resize(self, img, max_size):
         """Resize an image to the cache.
@@ -119,24 +111,20 @@ class WebCache():
         img.thumbnail((max_size, max_size))
         return img
 
-    def __cache_image(self, top_id, sub_id, file_id, size):
+    def __cache_image(self, file_id, size):
         """Add an image to the cache.
     
         Parameters
         ----------
-        top_id: str
-            The ID of the farm or investigation
-        sub_id: str
-            The ID of the zone or study
         file_id: str
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
 
         """
-        ifile = self.__db.get_file(top_id, sub_id, file_id)
+        ifile = self.__db.get_file(file_id)
         image = self.__db.file_read_bytes(ifile)
-        dst = os.path.join(self.__path, self.__image_hash(top_id, sub_id, file_id, size))
+        dst = os.path.join(self.__path, self.__image_hash(file_id, size))
         
         resolutions = { "large": 1500, "thumb": 150 }
         maxsize = resolutions.get(size) 
@@ -148,12 +136,12 @@ class WebCache():
             image = image.convert('RGB')
         image.save(dst, "JPEG", quality=84)
         
-        print("Converted (%s:%s:%s) to %s, size %d" % (top_id, sub_id, file_id, dst, maxsize))
+        print("Converted (%s) to %s, size %d" % (file_id, dst, maxsize))
 
         return dst
 
 
-    def __cached_image_data(self, top_id, sub_id, file_id, size):
+    def __cached_image_data(self, file_id, size):
         """Return cached image data.
         
         Returns the data of a cached image. If the image is not yet
@@ -161,10 +149,6 @@ class WebCache():
     
         Parameters
         ----------
-        top_id: str
-            The ID of the farm or investigation
-        sub_id: str
-            The ID of the zone or study
         file_id: str
             The ID of the file in the fileset
         size: str
@@ -172,27 +156,22 @@ class WebCache():
 
         """
         data = None
-        path = os.path.join(self.__path,
-                            self.__image_hash(top_id, sub_id, file_id, size))
+        path = os.path.join(self.__path, self.__image_hash(file_id, size))
         if not os.path.isfile(path):
-            self.__cache_image(top_id, sub_id, file_id, size)
+            self.__cache_image(file_id, size)
         with open(path, mode="rb") as f:
             data = f.read()
             f.close()
         return data
 
     
-    def image_data(self, top_id, sub_id, file_id, size):
+    def image_data(self, file_id, size):
         """Return image data.
         
         Returns the data of a given image file in the database.
     
         Parameters
         ----------
-        top_id: str
-            The ID of the farm or investigation
-        sub_id: str
-            The ID of the zone or study
         file_id: str
             The ID of the file in the fileset
         size: str
@@ -201,11 +180,11 @@ class WebCache():
         """
         if size == "orig":
             print("Using original file")
-            ifile = self.__db.get_file(top_id, sub_id, file_id)
+            ifile = self.__db.get_file(file_id)
             return self.__db.file_read_bytes(ifile), ifile.mimetype
         elif size == "large" or size == "thumb":
             print("Using cached file")
-            return self.__cached_image_data(top_id, sub_id, file_id, size), "image/jpg"
+            return self.__cached_image_data(file_id, size), "image/jpg"
         else:
             raise ValueError("Unknow size specification: %s" % size)
 

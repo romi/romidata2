@@ -47,121 +47,146 @@ class Database(IDatabase):
         self.__classname = classname
         self.__indexfile = "index.json"
         self.__basefs = open_fs(self.__basedir, create=True)
+        self.__objects = {}        
+        self.__files = {}        
         if factory == None:
             self.__factory = DefaultFactory()
         else:
             self.__factory = factory
-        self.__all = None
+        self.__makedirs("objects")
+        self.__makedirs("files")
+        self.__makedirs("data")
+        self.__load_files()
+        self.__load_objects()
+
         
     def __del__(self):
         if self.__basefs:
             print(self.__basefs)
             self.__basefs.close()
             self.__basefs = None
-        
-    def get_by_id(self, id: str) -> IFarm:
-        r = None
-        for i in self.all:
-            if i.id == id:
-                r = i
-                break
-        return r
-        
-    def get_by_name(self, name: str) -> Any:
-        r = None
-        for i in self.all:
-            if i.short_name == name:
-                r = i
-                break
-        return r
-        
-    def get(self, id_or_short_name: str) -> IFarm:
-        return (self.get_by_id(id_or_short_name)
-                or self.get_by_name(id_or_short_name))
+
+    def __load_object(self, relpath: str) -> Any:
+        obj = None
+        if self.__basefs.exists(relpath):
+            with self.__basefs.open(relpath) as json_file:
+                data = json.load(json_file)
+                obj = self.__factory.create(data["classname"],
+                                            data["value"])
+                self.__objects[data["id"]] = obj        
+        return obj
     
-    def __append(self, obj: Any) -> None:
-        if self.__all == None:
-            self.__all = [ obj ]
-        else:
-            self.__all.append(obj)
-        
-    def __check_append(self, obj: Any) -> None:
-        if not self.get(obj.id):
-            self.__append(obj)
-            
-    def store(self, obj: Any) -> None:
-        self.__makedirs(self.__typename, obj.id)
-        relpath = fs.path.join(self.__typename, obj.id, self.__indexfile)
+    def __load_objects(self) -> None:
+        for filename in self.__basefs.listdir('objects'):
+            if filename.endswith(".json"):
+                self.__load_object(fs.path.join("objects", filename))
+        for obj in self.__objects.values():
+            obj.restore(self)
+                
+    def __load_id(self, obj_id: str) -> None:
+        relpath = fs.path.join("objects", "%s.json" % obj_id)
+        return self.__load_object(relpath)
+
+    def store_object(self, obj_id: str, classname: str, obj: Any) -> None:
+        relpath = fs.path.join("objects", "%s.json" % obj_id)
         with self.__basefs.open(relpath, 'w') as f:
-            json.dump(obj, f, indent=4, cls=JsonExporter)
-        self.__check_append(obj)
-            
-    def __load_one(self, obj_id: str) -> Any:
-        farm = None
-        relpath = fs.path.join(self.__typename, obj_id, self.__indexfile)
-        with self.__basefs.open(relpath) as json_file:
-            properties = json.load(json_file)
-            farm = self.__factory.create(self.__classname, properties)
-        return farm
+            data = {
+                "id": obj_id,
+                "classname": classname,
+                "value": obj
+            }
+            json.dump(data, f, indent=4, cls=JsonExporter)
     
-    def __load_all(self):
-        ids = self.__basefs.listdir(self.__typename)
-        array = []
-        for obj_id in ids:
-            obj = self.__load_one(obj_id)
-            array.append(obj)
-        return array
+    def __insert(self, obj: BaseClass) -> None:
+        self.__objects[obj.id] = obj
 
-    @property
-    def all(self) -> List[Any]:
-        if self.__all == None:
-            self.__all = self.__load_all()
-        return self.__all
+    def lookup(self, obj_id: str) -> BaseClass:
+        r = self.__objects.get(obj_id)
+        if r == None:
+            r = self.__load_id(obj_id)            
+        return r
+            
+    def select(self, classname: str, prop: str = None, value: str = None) -> List[BaseClass]:
+        r = []
+        for obj in self.__objects.values():
+            if (obj.classname == classname
+                and (prop == None 
+                     or getattr(obj, prop) == value)):
+                r.append(obj)
+        return r
+            
+    def store(self, obj: Any, recursive=True) -> None:
+        self.__insert(obj)
+        obj.store(self, recursive)
+        
+    def __insert_file(self, ifile: IFile) -> None:
+        self.__files[ifile.id] = ifile        
 
+    def __load_file(self, relpath: str) -> None:
+        with self.__basefs.open(relpath) as json_file:
+            data = json.load(json_file)
+            f = self.__factory.create("File", data)
+            self.__insert_file(f)
 
-    def new_file(self, parent: Any, source_name: str, source_id: str,
+    def __load_files(self) -> None:
+        for filename in self.__basefs.listdir('files'):
+            if filename.endswith(".json"):
+                self.__load_file(fs.path.join("files", filename))
+
+    def __store_file(self, ifile: IFile) -> None:
+        relpath = fs.path.join("files", "%s.json" % ifile.id)
+        with self.__basefs.open(relpath, 'w') as f:
+            json.dump(ifile, f, indent=4, cls=JsonExporter)
+        self.__insert_file(ifile)
+
+    def new_file(self, source_name: str, source_id: str,
                  short_name: str, relpath: str, mimetype: str) -> IFile:
         f = self.__factory.create("File", {
             "id": new_id(),
             "source_name": source_name,
             "source_id": source_id,
             "short_name": short_name,
+            "date_created": current_date().isoformat(),
+            "source_name": source_name,
             "path": relpath,
             "mimetype": mimetype })
-        f.parent = parent
+        self.__store_file(f)
         return f
-    
-    def get_file(self, top_id, sub_id, file_id) -> IFile:
-        top = self.get(top_id)
-        if not top:
-            raise ValueError("Can't find %s entry with ID %s" % (self.__typename, top_id))
-        sub = top.get(sub_id)
-        if not sub:
-            raise ValueError("Can't find %s entry with ID %s" % (self.__subtypename, sub_id))
-        zfile = sub.get_file(file_id)
-        if not zfile:
-            raise ValueError("Can't find file with ID %s" % file_id)
-        return zfile
+
+    def get_file(self, file_id: str) -> IFile:
+        return self.__files.get(file_id)
+        
+    def select_files(self,
+                     source_name: str,
+                     source_id: str,
+                     short_name: str) -> List[IFile]:
+        r = []
+        for f in self.__files.values():
+            if ((source_name == None or f.source_name == source_name)
+                and (source_id == None or f.source_id == source_id)
+                and (short_name == None or f.short_name == short_name)):
+                r.append(f)
+        return r
         
     def __makedirs(self, *dirs) -> None:
         relpath = fs.path.join(*dirs)
         self.__basefs.makedirs(relpath, recreate=True)
             
-    def __open_file(self, top_id: str, sub_id: str, relpath: str, mode: str):
-        path = fs.path.dirname(relpath) 
-        self.__makedirs(self.__typename, top_id, self.__subtypename, sub_id, path)
-        relpath = fs.path.join(self.__typename, top_id, self.__subtypename, sub_id, relpath)
+    def __open_file(self, relpath: str, mode: str):
+        dirs = fs.path.dirname(relpath) 
+        self.__makedirs(dirs)
         return self.__basefs.open(relpath, mode=mode)
 
-    def __open_ifile(self, zfile: IFile, mode: str):
-        sub = zfile.parent
-        top = sub.parent
-        return self.__open_file(top.id, sub.id, zfile.path, mode)
+    def __open_ifile(self, ifile: IFile, mode: str):
+        return self.__open_file(fs.path.join("data", ifile.path), mode)
         
     def file_store_text(self, ifile: IFile, text: str) -> None:
         f = self.__open_ifile(ifile, "w")
         f.write(text)
         f.close()
+        
+    def file_store_json(self, ifile: IFile, value: Any) -> None:
+        self.file_store_text(ifile, json.dumps(value, indent=4))
         
     def file_store_bytes(self, ifile: IFile, data: bytes) -> None:
         f = self.__open_ifile(ifile, "wb")
@@ -188,9 +213,62 @@ class Database(IDatabase):
 class InvestigationDatabase(Database):
     def __init__(self, basedir: str, factory: IFactory = None):
         super().__init__(basedir, "investigations", "Investigation", "studies", factory)
+
         
 class FarmDatabase(Database):
     def __init__(self, basedir: str, factory: IFactory = None):
         super().__init__(basedir, "farms", "Farm", "zones", factory)
 
+    def get_person(self, person_id: str):
+        r = self.lookup(person_id)
+        if not r:
+            people = self.select("Person", "short_name", person_id)
+            if len(people) >= 1:
+                r = people[0]
+        return r
+
+    def get_farm(self, farm_id: str):
+        r = self.lookup(farm_id)
+        if not r:
+            farms = self.select("Farm", "short_name", farm_id)
+            if len(farms) >= 1:
+                r = farms[0]
+        return r
     
+    def get_zone(self, zone_id: str):
+        r = self.lookup(zone_id)
+        if not r:
+            zones = self.select("Zone", "short_name", zone_id)
+            if len(zones) >= 1:
+                r = zones[0]
+        return r
+
+    def get_scan(self, scan_id: str):
+        return self.lookup(scan_id)
+
+    def get_analysis(self, analysis_id: str):
+        return self.lookup(analysis_id)
+
+    def get_datastream(self, stream_id: str):
+        pass
+    
+    def scan_filepath(self, farm, zone, scan, file_short_name, ext):
+        return "%s/%s/scans/%s/%s.%s" % (farm.short_name,
+                                         zone.short_name,
+                                         scan.date.strftime("%Y%m%d-%H%M%S"),
+                                         file_short_name,
+                                         ext)
+
+    def analysis_filepath(self, farm, zone, analysis, file_short_name, ext):
+        return "%s/%s/%s/%s/%s.%s" % (farm.short_name,
+                                      zone.short_name,
+                                      analysis.short_name,
+                                      analysis.id,
+                                      file_short_name,
+                                      ext)
+
+    def datastream_filepath(self, farm, zone, datastream_id):
+        return "%s/%s/datastreams/%s.json" % (farm.short_name,
+                                              zone.short_name,
+                                              datastream_id)
+

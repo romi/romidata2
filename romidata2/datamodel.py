@@ -114,14 +114,62 @@ class BaseClass(ABC):
     subclasses.
 
     """
-    
-    def clone(self):
-        return copy.deepcopy(self)
 
     @abstractmethod
-    def serialize(self) -> dict:
+    def clone(self):
         pass
 
+    @property
+    @abstractmethod
+    def id(self) -> str:
+        pass
+
+    @id.setter
+    @abstractmethod
+    def id(self, value: str):
+        pass
+
+    @property
+    @abstractmethod
+    def classname(self) -> str:
+        pass
+
+    @abstractmethod
+    def serialize(self, recursive=False) -> dict:
+        pass
+
+    def store_default(self, db: Any) -> None:
+        db.store_object(self.id, self.classname, self)
+
+    def store_list(self, db: Any, array, recursive=False) -> None:
+        for obj in array:
+            obj.store(db, recursive)
+
+    def store_id_list(self, db: Any, array, recursive=False) -> None:
+        for the_id in array:
+            obj = db.lookup(the_id)
+            if obj:
+                obj.store(db, recursive)
+            else:
+                raise ValueError("ID with value %s does not exist" % the_id)
+
+    @abstractmethod
+    def store(self, db: Any, recursive=False) -> None:
+        pass
+
+    def restore(self, db: Any) -> None:
+        pass
+
+    def lookup_id_list(self, db: Any, array: List[str]) -> List[Any]:
+        r = []
+        for the_id in array:
+            obj = db.lookup(the_id)
+            if obj:
+                r.append(obj)
+            else:
+                raise ValueError("ID with value %s does not exist" % the_id)
+        return r
+    
     @abstractmethod
     def parse(self, factory: IFactory, properties: dict) -> dict:
         pass
@@ -137,7 +185,79 @@ class BaseClass(ABC):
 
 
         
+class IFile(BaseClass):
+
+    @property
+    def classname(self):
+        return "File"
+
+    @property
+    @abstractmethod
+    def source_name(self) -> List[str]:
+        pass
+
+    @source_name.setter
+    @abstractmethod
+    def source_name(self, value: str):
+        pass
+
+    @property
+    @abstractmethod
+    def source_id(self) -> List[str]:
+        pass
+
+    @source_id.setter
+    @abstractmethod
+    def source_id(self, value: str):
+        pass
+
+    @property
+    @abstractmethod
+    def short_name(self) -> str:
+        pass
+
+    @short_name.setter
+    @abstractmethod
+    def short_name(self, value: str):
+        pass
+        
+    @property
+    @abstractmethod
+    def date_created(self) -> datetime:
+        pass
+
+    @date_created.setter
+    @abstractmethod
+    def date_created(self, value: datetime):
+        pass
+        
+    @property
+    @abstractmethod
+    def path(self) -> str:
+        pass
+
+    @path.setter
+    @abstractmethod
+    def path(self, value: str):
+        pass
+
+    @property
+    @abstractmethod
+    def mimetype(self) -> str:
+        pass
+
+    @mimetype.setter
+    @abstractmethod
+    def mimetype(self, value: str):
+        pass
+
+
+
 class IPerson(BaseClass):
+
+    @property
+    def classname(self):
+        return "Person"
 
     @property
     @abstractmethod
@@ -200,80 +320,11 @@ class IPerson(BaseClass):
         pass
 
     
-class IFile(BaseClass):
-        
-    @property
-    @abstractmethod
-    def parent(self) -> Any:
-        pass
-
-    @parent.setter
-    @abstractmethod
-    def parent(self, value: Any):
-        pass
-        
-    @property
-    @abstractmethod
-    def id(self):
-        pass
-
-    @id.setter
-    @abstractmethod
-    def id(self, value: List[str]):
-        pass
-
-    @property
-    @abstractmethod
-    def source_name(self) -> List[str]:
-        pass
-
-    @source_name.setter
-    @abstractmethod
-    def source_name(self, value: str):
-        pass
-
-    @property
-    @abstractmethod
-    def source_id(self) -> List[str]:
-        pass
-
-    @source_id.setter
-    @abstractmethod
-    def source_id(self, value: str):
-        pass
-
-    @property
-    @abstractmethod
-    def short_name(self) -> str:
-        pass
-
-    @short_name.setter
-    @abstractmethod
-    def short_name(self, value: str):
-        pass
-        
-    @property
-    @abstractmethod
-    def path(self) -> str:
-        pass
-
-    @path.setter
-    @abstractmethod
-    def path(self, value: str):
-        pass
-
-    @property
-    @abstractmethod
-    def mimetype(self) -> str:
-        pass
-
-    @mimetype.setter
-    @abstractmethod
-    def mimetype(self, value: str):
-        pass
-
-
 class IParameters(BaseClass):
+
+    @property
+    def classname(self):
+        return "Parameters"
     
     @abstractmethod
     def get_value(self, key: str) -> Any:
@@ -290,6 +341,10 @@ class IParameters(BaseClass):
 
 
 class ISoftwareModule(BaseClass):
+
+    @property
+    def classname(self):
+        return "SoftwareModule"
 
     @property
     @abstractmethod
@@ -333,6 +388,10 @@ class ISoftwareModule(BaseClass):
     
 
 class ICamera(BaseClass):
+
+    @property
+    def classname(self):
+        return "Camera"
         
     @property
     @abstractmethod
@@ -396,6 +455,11 @@ class ICamera(BaseClass):
 
     
 class IScanningDevice(BaseClass):
+
+    @property
+    def classname(self):
+        return "ScanningDevice"
+    
     @property
     @abstractmethod
     def short_name(self):
@@ -448,6 +512,10 @@ class IScanningDevice(BaseClass):
 
         
 class IScanPath(BaseClass):
+
+    @property
+    def classname(self):
+        return "ScanPath"
         
     @property
     @abstractmethod
@@ -481,6 +549,10 @@ class IScanPath(BaseClass):
 
     
 class ISample(BaseClass):
+
+    @property
+    def classname(self):
+        return "Sample"
         
     @property
     @abstractmethod
@@ -534,6 +606,10 @@ class ISample(BaseClass):
 
 
 class IObservationUnit(BaseClass):
+
+    @property
+    def classname(self):
+        return "ObservationUnit"
         
     @property
     @abstractmethod
@@ -603,6 +679,10 @@ class IObservationUnit(BaseClass):
 
 
 class IBiologicalMaterial(BaseClass):
+
+    @property
+    def classname(self):
+        return "BiologicalMaterial"
 
     @property
     @abstractmethod
@@ -686,11 +766,59 @@ class IBiologicalMaterial(BaseClass):
 
         
 class IPose(BaseClass):
-    def __init__(self):
+
+    @property
+    def classname(self):
+        return "Pose"
+
+
+class IUnit():
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+
+class IObservable():
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+    
+class IDataStream(BaseClass):
+
+    @property
+    def classname(self):
+        return "DataStream"
+
+    @property
+    @abstractmethod
+    def observable(self) -> IObservable:
+        pass
+
+    @property
+    @abstractmethod
+    def unit(self) -> IUnit:
+        pass
+    
+    @abstractmethod
+    def get_values(self, db) -> List[dict]:
+        pass
+    
+    @abstractmethod
+    def select(self, db, start_date: datetime = None,
+               end_date: datetime = None) -> List[dict]:
         pass
 
 
 class IBoundingBox(BaseClass):
+
+    @property
+    def classname(self):
+        return "BoundingBox"
 
     @property
     def x(self) -> List[float]:
@@ -721,6 +849,10 @@ class IBoundingBox(BaseClass):
     
     
 class IScan(BaseClass):
+
+    @property
+    def classname(self):
+        return "Scan"
         
     @property
     @abstractmethod
@@ -734,12 +866,12 @@ class IScan(BaseClass):
         
     @property
     @abstractmethod
-    def parent(self) -> Any: # forward declaration of IStudy?
+    def parent(self) -> Any:
         pass
 
     @parent.setter
     @abstractmethod
-    def parent(self, value: Any): # forward declaration of IStudy?
+    def parent(self, value: Any):
         pass
 
     @property
@@ -847,7 +979,7 @@ class IScan(BaseClass):
 
     @property
     @abstractmethod
-    def images(self):
+    def images(self) -> List[IFile]:
         pass
 
     
@@ -856,6 +988,11 @@ class ITask(BaseClass):
     STATE_RUNNING = "Running"
     STATE_FINISHED = "Finished"
     STATE_ERROR = "Error"
+    STATES = ["Defined", "Running", "Finished", "Error"]
+
+    @property
+    def classname(self):
+        return "Task"
         
     @property
     @abstractmethod
@@ -942,6 +1079,10 @@ class ITask(BaseClass):
     
 
 class IObservedVariable(BaseClass):
+
+    @property
+    def classname(self):
+        return "ObservedVariable"
         
     @property
     @abstractmethod
@@ -999,6 +1140,10 @@ class IAnalysis(BaseClass):
     STATE_RUNNING = "Running"
     STATE_FINISHED = "Finished"
     STATE_ERROR = "Error"
+
+    @property
+    def classname(self):
+        return "Analysis"
             
     @property
     @abstractmethod
@@ -1101,6 +1246,10 @@ class IAnalysis(BaseClass):
 
     
 class IExperimentalFactor(BaseClass):
+
+    @property
+    def classname(self):
+        return "ExperimentalFactor"
     
     @property
     @abstractmethod
@@ -1145,15 +1294,15 @@ class StudyAndZoneBase(BaseClass):
     def id(self, value: str):
         pass
 
-    @property
-    @abstractmethod
-    def parent(self) -> Any:
-        pass
-
-    @id.setter
-    @abstractmethod
-    def parent(self, value: Any):
-        pass
+#    @property
+#    @abstractmethod
+#    def parent(self) -> Any:
+#        pass
+#
+#    @id.setter
+#    @abstractmethod
+#    def parent(self, value: Any):
+#        pass
 
     @property
     @abstractmethod
@@ -1183,43 +1332,41 @@ class StudyAndZoneBase(BaseClass):
                 r.append(f)
         return r
             
-    @property
-    @abstractmethod
-    def scans(self) -> List[IScan]:
-        pass
-
-    @scans.setter
-    @abstractmethod
-    def scans(self, values: List[IScan]):
-        pass
-
-    def add_scan(self, scan: IScan):
-        if not scan:
-            raise ValueError("Expected a scan object as argument")
-        scan.parent = self
-        self.scans.append(scan)
-
-    def get_scan(self, scan_id: str):
-        return self.find(scan_id, self.scans, "id")
+#    @property
+#    @abstractmethod
+#    def scans(self) -> List[IScan]:
+#        pass
+#
+#    @scans.setter
+#    @abstractmethod
+#    def scans(self, values: List[IScan]):
+#        pass
+#
+#    def add_scan(self, scan: IScan):
+#        if not scan:
+#            raise ValueError("Expected a scan object as argument")
+#        scan.parent = self
+#        self.scans.append(scan)
+#
+#    def get_scan(self, scan_id: str):
+#        return self.find(scan_id, self.scans, "id")
             
-    @property
-    @abstractmethod
-    def analyses(self) -> List[IAnalysis]:
-        pass
-
-    @analyses.setter
-    @abstractmethod
-    def analyses(self, values: List[IAnalysis]):
-        pass
-
-    def add_analysis(self, value: IAnalysis):
-        if not value:
-            raise ValueError("Expected an analysis object as argument")
-        value.parent = self
-        self.analyses.append(value)
-
-    def get_analysis(self, analysis_id: str):
-        return self.find(analysis_id, self.analyses, "id")
+#    @property
+#    @abstractmethod
+#    def analyses(self) -> List[IAnalysis]:
+#        pass
+#
+#    @analyses.setter
+#    @abstractmethod
+#    def analyses(self, values: List[IAnalysis]):
+#        pass
+#
+#    @abstractmethod
+#    def add_analysis(self, value: IAnalysis):
+#        pass
+#
+#    def get_analysis(self, analysis_id: str):
+#        return self.find(analysis_id, self.analyses, "id")
 
     @property
     @abstractmethod
@@ -1236,51 +1383,26 @@ class StudyAndZoneBase(BaseClass):
             raise ValueError("Expected an scan path as argument")
         self.scan_paths.append(value)
 
-
-    def validate_camera_name(self, value: str) -> str:
-        r = value
-        if not value:
-            if len(self.cameras) == 1:
-                r = self.cameras[0].short_name
-            else:
-                raise ValueError("Missing the name of the camera")
-        else:
-            if not self.find(value, self.cameras, "short_name"):
-                raise ValueError("The camera %s is not used in the study" % value)
-        return r
-
-    def validate_scanning_device_name(self, value: str) -> str:
-        r = value
-        if not value:
-            if len(self.scanning_devices) == 1:
-                r = self.scanning_devices[0].short_name
-            else:
-                raise ValueError("Missing the name of the scanning device")
-        else:
-            if not self.find(value, self.scanning_devices, "short_name"):
-                raise ValueError("The scanning device %s is not used in the study"
-                                 % value)
-        return r
-        
-    def validate_scan_path_name(self, value: str) -> str:
-        r = value
-        if not value:
-            if len(self.scan_paths) == 1:
-                r = self.scan_paths[0].short_name
-            else:
-                raise ValueError("Missing the name of the scan path")
-        else:
-            if not self.find(value, self.scan_paths, "short_name"):
-                raise ValueError("The scan path %s is not used in the study"
-                                 % value)
-        return r
-
     @abstractmethod
-    def new_scan(self, **kwargs):
+    def new_scan(self, db, **kwargs):
         pass
 
     
 class IStudy(StudyAndZoneBase):
+
+    @property
+    def classname(self):
+        return "Study"
+
+    @property
+    @abstractmethod
+    def investigation(self) -> Any:
+        pass
+
+    @investigation.setter
+    @abstractmethod
+    def investigation(self, value: Any):
+        pass
     
     @property
     @abstractmethod
@@ -1381,6 +1503,10 @@ class IStudy(StudyAndZoneBase):
 class IZone(StudyAndZoneBase):
 
     @property
+    def classname(self):
+        return "Zone"
+
+    @property
     @abstractmethod
     def short_name(self) -> str:
         pass
@@ -1390,9 +1516,45 @@ class IZone(StudyAndZoneBase):
     def short_name(self, value: str):
         pass
     
+    @property
+    @abstractmethod
+    def farm(self) -> str:
+        pass
+        
+    @farm.setter
+    @abstractmethod
+    def farm(self, value: str):
+        pass
+    
+    @property
+    @abstractmethod
+    def scans(self) -> List[IScan]:
+        pass
+    
+    @property
+    @abstractmethod
+    def analyses(self, db) -> List[IAnalysis]:
+        pass
+
+    @abstractmethod
+    def add_analysis(self, value: IAnalysis, db):
+        pass
+    
+    @property
+    @abstractmethod
+    def datastreams(self) -> List[IDataStream]:
+        pass
+
+    @abstractmethod
+    def add_datastream(self, value: IDataStream, db):
+        pass
 
 
 class IFarm(BaseClass):
+
+    @property
+    def classname(self):
+        return "Farm"
         
     @property
     @abstractmethod
@@ -1449,13 +1611,8 @@ class IFarm(BaseClass):
     def people(self) -> List[IPerson]:
         pass
 
-    @people.setter
     @abstractmethod
-    def people(self, values: List[IPerson]):
-        pass
-
-    @abstractmethod
-    def add_person(self, person: IPerson):
+    def add_person(self, person: IPerson, db):
         pass
     
     @property
@@ -1493,23 +1650,20 @@ class IFarm(BaseClass):
     def zones(self) -> List[IZone]:
         pass
 
-    @zones.setter
     @abstractmethod
-    def zones(self, values: List[IZone]):
+    def add_zone(self, zone: IZone, db):
         pass
 
-    def add_zone(self, zone: IZone):
-        self.zones.append(zone)
-
-    def get_zone(self, id_or_short_name: str) -> IZone:
-        return (self.find(id_or_short_name, self.zones, "id")
-                or self.find(id_or_short_name, self.zones, "short_name"))
-
-    def get(self, id_or_short_name) -> Any:
-        return self.get_zone(id_or_short_name)
+    @abstractmethod
+    def get_zone(self, id_or_name: str):
+        pass
 
     
 class IInvestigation(BaseClass):
+
+    @property
+    def classname(self):
+        return "Investigation"
         
     @property
     @abstractmethod
@@ -1604,30 +1758,39 @@ class IInvestigation(BaseClass):
         return self.get_study(id_or_short_name)
 
 
-
+    
 class IDatabase(ABC):
 
     @abstractmethod
-    def get(self, id: str) -> Any:
+    def lookup(self, obj_id: str) -> BaseClass:
         pass
     
     @abstractmethod
-    def store(self, obj: Any) -> None:
+    def select(self, classname: str, prop: str, value: str) -> List[BaseClass]:
         pass
-    
-    @property
+        
     @abstractmethod
-    def all(self) -> List[Any]:
-        pass
-   
-    @abstractmethod
-    def new_file(self, parent: Any, short_name: str, relpath: str, mimetype: str) -> IFile:
+    def store_object(self, obj_id: str, classname: str, obj: Any) -> None:
         pass
     
     @abstractmethod
-    def get_file(self, top_id, sub_id, file_id) -> IFile:
+    def store(self, obj: Any, recursive=False) -> None:
         pass
     
+    @abstractmethod
+    def new_file(self, source_name: str, source_id: str,
+                 short_name: str, relpath: str, mimetype: str) -> IFile:
+        pass
+
+    @abstractmethod
+    def get_file(self, file_id: str) -> IFile:
+        pass
+        
+    @abstractmethod
+    def select_files(self, source_name: str,
+                     source_id: str, short_name: str) -> List[IFile]:
+        pass
+        
     @abstractmethod
     def file_store_text(self, f: IFile, text: str) -> None:
         pass

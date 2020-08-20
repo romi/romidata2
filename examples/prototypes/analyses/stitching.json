@@ -3,6 +3,7 @@
     "short_name": "stitching",
     "name": "2D image stitching",
     "description": "...",
+    "parent": "",
     "scan_id": "",
     "state": "Defined",
     "observed_variables": [],

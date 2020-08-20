@@ -3,6 +3,7 @@
     "short_name": "manual",
     "name": "Manual measurements",
     "description": "The angles and internodes are measured manually.",
+    "parent": "",
     "scan_id": "",
     "state": "Defined",
 

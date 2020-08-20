@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 import json
 
-from flask import Flask, make_response
+from flask import Flask, make_response, abort
 from flask import request, send_from_directory
 from flask_cors import CORS
 from flask_restful import Resource, Api
+
+import dateutil.parser
 
 from romidata2.datamodel import *
 from romidata2.webcache import WebCache
@@ -39,7 +41,7 @@ class FarmList(RomiResource):
 
     def get(self):
         response = []
-        for farm in self.db.all:
+        for farm in self.db.select("Farm"):
             response.append({
                 'id': farm.id,
                 'short_name': farm.short_name,
@@ -52,7 +54,7 @@ class FarmInfo(RomiResource):
         super().__init__(app)
 
     def get(self, farm_id: str):
-        farm = self.db.get(farm_id)
+        farm = self.db.get_farm(farm_id)
         return {
             'id': farm.id,
             'short_name': farm.short_name,
@@ -67,25 +69,34 @@ class ZoneInfo(RomiResource):
     def __init__(self, app):
         super().__init__(app)
 
-    def get(self, farm_id: str, zone_id: str):
-        farm = self.db.get(farm_id)
-        zone = farm.get_zone(zone_id)
+    def get(self, zone_id: str):
+        zone = self.db.lookup(zone_id)
+        if zone.classname != "Zone":
+            abort(404)
+        farm = zone.farm
         return {
             'id': zone.id,
             'farm': farm.id,
             'short_name': zone.short_name,
-            'scans': [{"id": s.id, "date": s.date.isoformat() } for s in zone.scans ] }
+            'scans': [{"id": s.id, "date": s.date.isoformat()} for s in zone.scans],
+            'datastreams': [{"id": d.id,
+                             "observable": d.observable.name,
+                             "unit": d.unit.name} for d in zone.datastreams]
+        }
 
     
 class ScanInfo(RomiResource):
     def __init__(self, app):
         super().__init__(app)
 
-    def get(self, farm_id: str, zone_id: str, scan_id: str):
-        farm = self.db.get(farm_id)
-        zone = farm.get_zone(zone_id)
-        scan = zone.get_scan(scan_id)
-        analysis_ids = [a.id for a in zone.analyses if a.scan_id == scan_id]
+    def get(self, scan_id: str):
+        scan = self.db.lookup(scan_id)
+        if scan.classname != "Scan":
+            abort(404)
+        
+        zone = scan.parent
+        farm = zone.farm
+        
         analyses = []
         for analysis in zone.analyses:
             if analysis.scan_id == scan_id:
@@ -108,10 +119,14 @@ class AnalysisInfo(RomiResource):
     def __init__(self, app):
         super().__init__(app)
 
-    def get(self, farm_id: str, zone_id: str, analysis_id: str):
-        farm = self.db.get(farm_id)
-        zone = farm.get_zone(zone_id)
-        analysis = zone.get_analysis(analysis_id)
+    def get(self, analysis_id: str):
+        analysis = self.db.lookup(analysis_id)
+        if analysis.classname != "Analysis":
+            abort(404)
+            
+        zone = analysis.parent
+        farm = zone.farm
+            
         results = self.db.file_read_json(analysis.results_file)
         return {
             "id": analysis.id,
@@ -126,6 +141,50 @@ class AnalysisInfo(RomiResource):
         }
 
     
+class DataStreamInfo(RomiResource):
+    def __init__(self, app):
+        super().__init__(app)
+
+    def get(self, datastream_id: str):
+        datastream = self.db.lookup(datastream_id)
+        if datastream.classname != "DataStream":
+            abort(404)
+            
+#        zone = analysis.parent
+#        farm = zone.farm
+            
+        return {
+            "id": datastream.id,
+            "observable": datastream.observable.serialize(),
+            "unit": datastream.unit.serialize()
+        }
+
+    
+class DataStreamValues(RomiResource):
+    def __init__(self, app):
+        super().__init__(app)
+
+    def get(self, datastream_id: str):
+        datastream = self.db.lookup(datastream_id)
+        if datastream.classname != "DataStream":
+            abort(404)
+            
+        start = request.args.get('start', default=None, type=str)
+        end = request.args.get('end', default=None, type=str)
+
+        if start:
+            start_date = dateutil.parser.parse(start)
+        else:
+            start_date = None
+
+        if end:
+            end_date = dateutil.parser.parse(end)
+        else:
+            end_date = None
+            
+        return datastream.select(self.db, start_date, end_date)
+
+    
 class ZoneImage(RomiResource):
     """Class representing a image HTTP request, subclass of
     flask_restful's Resource class.
@@ -133,14 +192,14 @@ class ZoneImage(RomiResource):
     def __init__(self, app):
         super().__init__(app)
     
-    def get(self, farm_id, zone_id, image_id):
+    def get(self, image_id):
         """Return the HTTP response with the image data. Resize the image if
         necessary.
         """
         size = request.args.get('size', default='thumb', type=str)
         if not size in ['orig', 'thumb', 'large']:
             size = 'thumb'
-        data, mimetype = self.cache.image_data(farm_id, zone_id, image_id, size)
+        data, mimetype = self.cache.image_data(image_id, size)
         response = make_response(data)
         response.headers['Content-Type'] = mimetype
         return response
@@ -173,19 +232,27 @@ class FarmWebApp(Flask):
                                 resource_class_kwargs={'app': self})
         
         self.__api.add_resource(ZoneInfo,
-                                '/farms/<string:farm_id>/zones/<string:zone_id>',
+                                '/zones/<string:zone_id>',
                                 resource_class_kwargs={'app': self})
                 
         self.__api.add_resource(ScanInfo,
-                                '/farms/<string:farm_id>/zones/<string:zone_id>/scans/<string:scan_id>',
+                                '/scans/<string:scan_id>',
                                 resource_class_kwargs={'app': self})
         
         self.__api.add_resource(AnalysisInfo,
-                                '/farms/<string:farm_id>/zones/<string:zone_id>/analyses/<string:analysis_id>',
+                                '/analyses/<string:analysis_id>',
+                                resource_class_kwargs={'app': self})
+
+        self.__api.add_resource(DataStreamInfo,
+                                '/datastreams/<string:datastream_id>',
+                                resource_class_kwargs={'app': self})
+
+        self.__api.add_resource(DataStreamValues,
+                                '/datastreams/<string:datastream_id>/values',
                                 resource_class_kwargs={'app': self})
 
         self.__api.add_resource(ZoneImage,
-                                '/images/<string:farm_id>/<string:zone_id>/<string:image_id>',
+                                '/images/<string:image_id>',
                                 resource_class_kwargs={'app': self})
                 
         
