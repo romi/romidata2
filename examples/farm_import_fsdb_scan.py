@@ -13,6 +13,8 @@ sys.path.append(abspath('..'))
 from romidata2.protodb import Prototypes
 from romidata2.db import FarmDatabase
 from romidata2.datamodel import IAnalysis
+from romidata2.impl import DefaultFactory
+from romidata2.util import new_scan
 
 
 def create_date(year, month, day, hour=12, minutes=0, seconds=0) -> datetime:
@@ -20,9 +22,9 @@ def create_date(year, month, day, hour=12, minutes=0, seconds=0) -> datetime:
     return tz.localize(datetime(year, month, day, hour, minutes, seconds))
 
         
-def analysis_store_results(db, farm, zone, analysis, results):
-    relpath = db.analysis_filepath(farm, zone, analysis, "results", "json")
-    output_file = db.new_file(analysis.short_name, analysis.id,
+def analysis_store_results(db, farm, analysis, results):
+    relpath = db.analysis_filepath(analysis, "results", "json")
+    output_file = db.new_file(farm.id, analysis.short_name, analysis.id,
                               "results", relpath, "application/json")
     db.file_store_text(output_file, json.dumps(results, indent=4))
     #zone.add_file(output_file)
@@ -46,10 +48,10 @@ if __name__ == "__main__":
                         help="The path to the prototypes directory")
     parser.add_argument("-f", "--farm", required=True,
                         help="The short name of the farm")
-    parser.add_argument("-z", "--zone", required=True,
-                        help="The short name of the zone")
+    parser.add_argument("-u", "--observation_unit", required=True,
+                        help="The short name or ID of the observation unit")
     parser.add_argument("-p", "--people", required=True,
-                        help="A comma-separated list with the names of the operators")
+                        help="A comma-separated list of the short names of the operators")
     parser.add_argument("-c", "--camera", required=False,
                         help="The short name of the camera")
     parser.add_argument("-d", "--scanning-device", required=False,
@@ -61,6 +63,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     db = FarmDatabase(args.db)
+    factory = DefaultFactory(db)
     proto = Prototypes(args.proto)
     farm = db.get_farm(args.farm)
     if not farm:
@@ -70,49 +73,43 @@ if __name__ == "__main__":
     if not farm:
         raise ValueError("Can't find farm with id or short name %s" % args.farm)
     
-    zone = farm.get_zone(args.zone)
-    if not zone:
-        raise ValueError("Can't find zone with id or short name %s" % args.zone)
-    
-    person_names = parse_list(args.people)
-    for name in person_names:
-        person = db.get_person(name)
-        if not person:
-            raise ValueError("Can't find person with id or short name %s" % name)
+    crop = farm.get_observation_unit(args.observation_unit)
+    if not crop:
+        raise ValueError("Can't find observation unit with id or name %s" % args.observation_unit)
 
+    person_names = parse_list(args.people)
+    
+    scan_path = proto.get_scan_path(args.scan_path)
+    if not scan_path:
+        raise ValueError("Can't find scanning path with name %s" %
+                         args.scan_path)
     
     print("Import scans")
     print("============")
     print("FSBD:              %s" % args.fsdb)
     print("Farm:              %s (%s)" % (farm.short_name, farm.id))
-    print("Zone:              %s (%s)" % (zone.short_name, zone.id))
+    print("Observation unit:  %s (%s)" % (crop.short_name, crop.id))
     print("Operators:         %s" % ", ".join(person_names))
+    print("Camera:            %s" % args.camera)
+    print("Scanning device:   %s" % args.scanning_device)
+    print("Scan path:         %s" % scan_path.short_name)
+
+    newscan = new_scan(db,
+                       factory,
+                       crop.id,
+                       person_names,
+                       args.camera,
+                       args.scanning_device,
+                       scan_path)
+    newscan.store()
     
-    if args.camera:
-        print("Camera:            %s" % args.camera)
-    else:
-        print("Camera:            default camera")
-        
-    if args.scanning_device:
-        print("Scanning device:   %s" % args.scanning_device)
-    else:
-        print("Scanning device:   default scanner")
-
-    print("Scan path:         %s" % args.scan_path)
-    scan_path = proto.get_scan_path(args.scan_path)
-    if not scan_path:
-        raise ValueError("Can't find scan path %s" % s)
-
-    newscan = zone.new_scan(db,
-                            person_names = person_names,
-                            camera_name = args.camera,
-                            valid_cameras = farm.cameras,
-                            scanning_device_name = args.scanning_device,
-                            valid_scanning_devices = farm.scanning_devices,
-                            scan_path = scan_path)
+    zone = crop.zone
     
     fsdb = FSDB(args.fsdb)
     fsdb.connect()
+
+    plant_observation_units = {}
+    
     for scan_id in args.scans:
         print()
         print("Importing")
@@ -127,6 +124,7 @@ if __name__ == "__main__":
         month = int(d[4:6])
         day = int(d[6:8])
         newscan.date = create_date(year, month, day)
+        newscan.store()
         
         images_fileset = fsdb_scan.get_fileset("images")
         if not images_fileset:
@@ -137,14 +135,14 @@ if __name__ == "__main__":
         for image in images:
             print("Importing %s" % image.filename)
             data = image.read_raw()
-            relpath = db.scan_filepath(farm, zone, newscan, image.id, "jpg")
-            image_file = db.new_file("scan", newscan.id,
+            relpath = db.scan_filepath(newscan, image.id, "jpg")
+            image_file = db.new_file(farm.id, "scan", newscan.id,
                                      image.id, relpath, "image/jpeg")
             db.file_store_bytes(image_file, data)
-            #zone.add_file(image_file)
 
         stitching = proto.get_analysis("stitching")
-        stitching.scan_id = newscan.id
+        stitching.observation_unit = crop
+        stitching.scan = newscan
         stitching.state = IAnalysis.STATE_FINISHED
         stitching_task = stitching.tasks[0]
         results = {}
@@ -153,11 +151,10 @@ if __name__ == "__main__":
         images = maps_fileset.get_files()
         for image in images:
             data = image.read_raw()
-            relpath = db.analysis_filepath(farm, zone, stitching, image.id, "png")
-            output_file = db.new_file(stitching_task.short_name, stitching_task.id,
+            relpath = db.analysis_filepath(stitching, image.id, "png")
+            output_file = db.new_file(farm.id, stitching_task.short_name, stitching_task.id,
                                       image.id, relpath, "image/png")
             db.file_store_bytes(output_file, data)
-            #zone.add_file(output_file)
 
             results[image.id] = output_file.id
 
@@ -167,17 +164,19 @@ if __name__ == "__main__":
                 results["width"] = w
                 results["height"] = h
                 
-            
-        analysis_store_results(db, farm, zone, stitching, results)
-        zone.add_analysis(stitching, db)
+        db.store(stitching)
+        analysis_store_results(db, farm, stitching, results)
+        crop.add_analysis(stitching)
+        newscan.add_analysis(stitching)
 
         plant_analysis = proto.get_analysis("plant_analysis")
-        plant_analysis.scan_id = newscan.id
+        plant_analysis.observation_unit = crop
+        plant_analysis.scan = newscan
         plant_analysis.state = IAnalysis.STATE_FINISHED
         map_segmentation_task = plant_analysis.get_task("map_segmentation")
-        plant_indexing_task = plant_analysis.get_task("plant_indexing")
-        plant_growth_analysis_task = plant_analysis.get_task("plant_growth_analysis")
-
+#        plant_indexing_task = plant_analysis.get_task("plant_indexing")
+#        plant_growth_analysis_task = plant_analysis.get_task("plant_growth_analysis")
+#
         tmp = {}
         
         locations = {}
@@ -185,28 +184,39 @@ if __name__ == "__main__":
         pla = {}
         plant_images = {}
         plant_masks = {}
-        
+
         plant_analysis_fileset = fsdb_scan.get_fileset("individual_plants")
         files = plant_analysis_fileset.get_files()
         for fsdb_file in files:
             data = fsdb_file.read_raw()
-            relpath = db.analysis_filepath(farm, zone, plant_analysis,
-                                           fsdb_file.id, "png")
-            output_file = db.new_file(map_segmentation_task.short_name,
+            relpath = db.analysis_filepath(plant_analysis, fsdb_file.id, "png")
+            output_file = db.new_file(farm.id, map_segmentation_task.short_name,
                                       map_segmentation_task.id,
                                       fsdb_file.id, relpath, "image/png")
             db.file_store_bytes(output_file, data)
-            #zone.add_file(output_file)
 
             fsdb_meta = fsdb_file.get_metadata()
 
             file_id = fsdb_file.id
             if "mask" in fsdb_file.id:
                 file_id = fsdb_file.id.split("_")[0]
-
+                
             if not file_id in tmp:
                 tmp[file_id] = {}
-            
+
+            plant = plant_observation_units.get(file_id, None)
+            if plant == None:
+                plant = factory.create("ObservationUnit", {
+                    "type" : "plant",
+                    "short_name" : "%s-plant-%s" % (crop.short_name, file_id), # FIXME
+                    "context" : farm.id,
+                    "zone" : zone.id
+                })
+                crop.add_child(plant)
+                farm.add_observation_unit(plant)
+                plant_observation_units[file_id] = plant
+                plant.store()
+                
             if "mask" in fsdb_file.filename:
                 file_id = fsdb_file.id.split("_")[0]
                 #plant_masks[file_id] = output_file.id
@@ -215,7 +225,8 @@ if __name__ == "__main__":
                 #plant_images[fsdb_file.id] = output_file.id
                 #locations[fsdb_file.id] = fsdb_meta["loc"]
                 #pla[fsdb_file.id] = fsdb_meta["PLA"]
-                #index[fsdb_file.id] = fsdb_meta["id"]
+                #index[fsdb_file.id] = fsdb_meta["id"]                
+                tmp[fsdb_file.id]["observation_unit"] = plant.id
                 tmp[fsdb_file.id]["image"] = output_file.id
                 tmp[fsdb_file.id]["location"] = fsdb_meta["loc"]
                 tmp[fsdb_file.id]["id"] = fsdb_meta["id"]
@@ -231,10 +242,11 @@ if __name__ == "__main__":
         for key in tmp.keys():
             plants.append(tmp[key])
         results["plants"] = plants
-        analysis_store_results(db, farm, zone, plant_analysis,results)
+        db.store(plant_analysis)
+        analysis_store_results(db, farm, plant_analysis,results)
         
-        zone.add_analysis(plant_analysis, db)
+        crop.add_analysis(plant_analysis)
+        newscan.add_analysis(plant_analysis)
         
     fsdb.disconnect()
 
-    db.store(farm)

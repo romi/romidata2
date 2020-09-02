@@ -23,7 +23,7 @@ class Prototypes(IPrototypes):
     def __init__(self, basedir: str, factory: IFactory = None):
         self.__basedir = basedir
         if factory == None:
-            self.__factory = DefaultFactory()
+            self.__factory = DefaultFactory(None)
         else:
             self.__factory = factory
         self.__people = []

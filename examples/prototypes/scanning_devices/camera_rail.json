@@ -1,0 +1,22 @@
+{
+    "short_name": "camera_rail",
+    "name": "Raspberry Pi camera on a rail at Chatelain (development set-up)",
+    "description": "Single rail with Raspberry Pi camera, positioning using stepper and belt",
+    "software_module": {
+        "id": "romiscanner.scan.Scan",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "owner": "",
+    "parameters": {
+        "cnc": {
+            "module": "",
+            "parameters": {}
+        },
+        "gimbal": {
+            "module": "",
+            "parameters": {}
+        }
+    }
+}

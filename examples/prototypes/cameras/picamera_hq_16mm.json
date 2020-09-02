@@ -11,6 +11,7 @@
         "repository": "https://github.com/romi/romiscan",
         "branch": "master"
     },
+    "owner": "",
     "parameters": {
     }
 }

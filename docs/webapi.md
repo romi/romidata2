@@ -34,12 +34,12 @@ curl "http://example.com/farms"
 ```json
 [
   {
-    "id": "dszphw4i",
+    "id": "f3519ad6-e2c5-11ea-b72c-67793b3f1ad0",
     "short_name": "joes_farm",
     "name": "Joe's Farm"
   },
   {
-    "id": "95vaybgy",
+    "id": "83ab5c68-e2bf-11ea-b72b-433b7e4259e4",
     "short_name": "jennys",
     "name": "Jenny's Organic Market Farm"
   }
@@ -59,14 +59,14 @@ None
 ## Get a Specific Farm
 
 ```shell
-curl "http://example.com/farms/95vaybgy"
+curl "http://example.com/farms/83ab5c68-e2bf-11ea-b72b-433b7e4259e4"
 ```
 
 > The above command returns JSON structured like this:
 
 ```json
 {
-  "id": "95vaybgy",
+  "id": "83ab5c68-e2bf-11ea-b72b-433b7e4259e4",
   "short_name": "jennys",
   "name": "Jenny's Organic Market Farm",
   "description": "We're producing the tastiests organic vegetables in the valley since 1984.",
@@ -77,13 +77,13 @@ curl "http://example.com/farms/95vaybgy"
       "name": "Jenny L. Sunburn",
       "email": "Jenny.Sunburn@example.com",
       "affiliation": "",
-      "id": "cxjqd5z0",
+      "id": "012c01a0-e2c6-11ea-9b85-cbc02e75d84b",
       "role": "Crop Manager"
     }
   ],
   "zones": [
     {
-      "id": "jxjecsik",
+      "id": "9a9722d6-e2bf-11ea-82c8-e30ab21915dc",
       "short_name": "parcel_south"
     }
   ]
@@ -123,27 +123,27 @@ organise the farm into zones.
 ## Get a Specific Zone
 
 ```shell
-curl "http://example.com/farms/95vaybgy/zones/jxjecsik"
+curl "http://example.com/zones/9a9722d6-e2bf-11ea-82c8-e30ab21915dc"
 ```
 
 > The above command returns JSON structured like this:
 
 ```json
 {
-  "id": "jxjecsik",
-  "farm": "95vaybgy",
+  "id": "9a9722d6-e2bf-11ea-82c8-e30ab21915dc",
+  "farm": "83ab5c68-e2bf-11ea-b72b-433b7e4259e4",
   "short_name": "parcel_south",
   "scans": [
     {
-      "id": "lddu2z2k",
+      "id": "bf0d485c-e2bf-11ea-b145-737f5dd43c7b",
       "date": "2019-04-16T12:00:00+02:00"
     },
     {
-      "id": "msyjy6ar",
+      "id": "bf61a8a2-e2bf-11ea-844a-0f6f68e88696",
       "date": "2019-04-17T12:00:00+02:00"
     },
     {
-      "id": "ribqb9he",
+      "id": "bfab8b66-e2bf-11ea-a0a6-f3656e05228a",
       "date": "2019-04-18T12:00:00+02:00"
     }
   ]
@@ -163,13 +163,12 @@ Field | Description
 
 ### HTTP Request
 
-`GET http://example.com/farms/<FarmID>/zones/<ZoneID>`
+`GET http://example.com/zones/<ZoneID>`
 
 ### URL Parameters
 
 Parameter | Description
 --------- | -----------
-FarmID | The ID of the farm
 ZoneID | The ID of the zone
 
 
@@ -183,21 +182,20 @@ information, such as the list of individual plants and their sizes.
 ## Get a Specific Scan
 
 ```shell
-curl "http://example.com/farms/95vaybgy/zones/jxjecsik/scans/lddu2z2k"
+curl "http://example.com/scans/bf0d485c-e2bf-11ea-b145-737f5dd43c7b"
 ```
 
 > The above command returns JSON structured like this:
 
 ```json
 {
-  "id": "lddu2z2k",
-  "farm": "95vaybgy",
-  "zone": "jxjecsik",
+  "id": "bf0d485c-e2bf-11ea-b145-737f5dd43c7b",
+  "zone": "9a9722d6-e2bf-11ea-82c8-e30ab21915dc",
+  "farm": "83ab5c68-e2bf-11ea-b72b-433b7e4259e4",
   "date": "2019-04-16T12:00:00+02:00",
   "images": [
-    "fls2y871",
-    "8c6xc9c7",
-    "59djet16",
+    "331f229e-e2c3-11ea-a637-87b6109b19f5",
+    "336dc4da-e2c3-11ea-bb69-3bcb75a2a6c8",
     "..."
   ],
   "locations": [
@@ -205,13 +203,27 @@ curl "http://example.com/farms/95vaybgy/zones/jxjecsik/scans/lddu2z2k"
   ],
   "analyses": [
     {
-      "id": "esk57bkz",
+      "id": "fa11ec46-e2bf-11ea-8a05-737da99a972a",
       "short_name": "stitching",
       "name": "2D image stitching",
       "state": "Finished"
     },
     {
-      "id": "wg44993j",
+      "id": "fa625276-e2bf-11ea-82f6-e71b67ec1d85",
+      "short_name": "plant_analysis",
+      "name": "Plant Analysis",
+      "state": "Finished"
+    }
+  ],
+  "datastreams": [
+    {
+      "id": "fa11ec46-e2bf-11ea-8a05-737da99a972a",
+      "short_name": "stitching",
+      "name": "2D image stitching",
+      "state": "Finished"
+    },
+    {
+      "id": "fa625276-e2bf-11ea-82f6-e71b67ec1d85",
       "short_name": "plant_analysis",
       "name": "Plant Analysis",
       "state": "Finished"
@@ -242,14 +254,12 @@ Both analyses are detaild further below.
 
 ### HTTP Request
 
-`GET http://example.com/farms/<FarmID>/zones/<ZoneID>/scans/<ScanID>`
+`GET http://example.com/scans/<ScanID>`
 
 ### URL Parameters
 
 Parameter | Description
 --------- | -----------
-FarmID | The ID of the farm
-ZoneID | The ID of the zone
 ScanID | The ID of the scan
 
 
@@ -262,14 +272,14 @@ analyses use the image data of a scan (directly or indirectly).
 ## Get a Specific Analysis
 
 ```shell
-curl "http://example.com/farms/95vaybgy/zones/jxjecsik/scans/lddu2z2k"
+curl "http://example.com/analyses/fa11ec46-e2bf-11ea-8a05-737da99a972a"
 ```
 
 > The above command returns JSON structured like this:
 
 ```json
 {
-  "id": "esk57bkz",
+  "id": "fa11ec46-e2bf-11ea-8a05-737da99a972a",
   "short_name": "stitching",
   "name": "2D image stitching",
   "description": "...",
@@ -290,7 +300,7 @@ Field | Description
 
 ### HTTP Request
 
-`GET http://example.com/farms/<FarmID>/zones/<ZoneID>/analyses/<AnalysisID>`
+`GET http://example.com/farms/analyses/<AnalysisID>`
 
 ### URL Parameters
 
@@ -404,14 +414,14 @@ curl "http://example.com/images/95vaybgy/jxjecsik/3yhukq53?size=thumb"
 
 ### HTTP Request
 
-`GET http://example.com/images/<FarmID>/<ZoneID>/<ImageID>`
+`GET http://example.com/images/<ImageID>`
+
+`GET http://example.com/images/<ImageID>?size=<SizeLabel>`
 
 ### URL Parameters
 
 Parameter | Description
 --------- | -----------
-FarmID | The ID of the farm
-ZoneID | The ID of the zone
 ImageID | The ID of the image
 
 ### Query Parameters

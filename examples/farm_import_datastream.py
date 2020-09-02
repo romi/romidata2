@@ -2,17 +2,10 @@ import sys
 from os.path import abspath
 import argparse
 import json
-from io import BytesIO
-from datetime import datetime
-
-import dateutil.parser
-from tzlocal import get_localzone
-from PIL import Image
 
 sys.path.append(abspath('..'))
 from romidata2.db import FarmDatabase
-from romidata2.datamodel import IAnalysis
-from romidata2.impl import DefaultFactory, new_id
+from romidata2.impl import DefaultFactory
 
     
 def parse_list(s):
@@ -29,22 +22,22 @@ if __name__ == "__main__":
                         help="The path to the database directory")
     parser.add_argument("-f", "--farm", required=True,
                         help="The short name of the farm")
-    parser.add_argument("-z", "--zone", required=True,
-                        help="The short name of the zone")
+    parser.add_argument("-u", "--observation-unit", required=True,
+                        help="The short name or ID of the observation unit")
     parser.add_argument("--observable-name", required=True,
                         help="The human-readable name of the observable")
-    parser.add_argument("--observable-id", required=True,
+    parser.add_argument("--observable-uri", required=True,
                         help="The URI of the observable")
     parser.add_argument("--unit-name", required=True,
                         help="The human-readable name of the unit")
-    parser.add_argument("--unit-id", required=True,
+    parser.add_argument("--unit-uri", required=True,
                         help="The URI of the unit")
     parser.add_argument('files', nargs=argparse.REMAINDER)
 
     args = parser.parse_args()
 
     db = FarmDatabase(args.db)
-    factory = DefaultFactory()
+    factory = DefaultFactory(db)
     farm = db.get_farm(args.farm)
     if not farm:
         farms = db.select("Farm", "short_name", args.farm)
@@ -53,9 +46,9 @@ if __name__ == "__main__":
     if not farm:
         raise ValueError("Can't find farm with id or short name %s" % args.farm)
     
-    zone = farm.get_zone(args.zone)
-    if not zone:
-        raise ValueError("Can't find zone with id or short name %s" % args.zone)
+    observation_unit = farm.get_observation_unit(args.observation_unit)
+    if not observation_unit:
+        raise ValueError("Can't find observation unit with id or name %s" % args.observation_unit)
     
     if len(args.files) != 1:
         raise ValueError("Expected one file to be passed on the command line")
@@ -64,25 +57,29 @@ if __name__ == "__main__":
     print("Import datastream")
     print("=================")
     print("Farm:              %s (%s)" % (farm.short_name, farm.id))
-    print("Zone:              %s (%s)" % (zone.short_name, zone.id))
+    print("Observation unit:  %s (%s)" % (observation_unit.short_name, observation_unit.id))
 
-    datastream_id = new_id()
-    relpath = db.datastream_filepath(farm, zone, datastream_id)
-    datafile = db.new_file("datastreams", datastream_id,
-                            "values", relpath, "application/json")
-
-    datastream = factory.create("Datastream",
+    datastream = factory.create("DataStream",
                                 {
-                                    "id": datastream_id,
-                                    "file": datafile.id,
-                                    "observable": { "id": args.observable_id,
-                                                    "name": args.observable_name},
-                                    "unit": { "id": args.unit_id, "name": args.unit_name}
+                                    "observation_unit": observation_unit.id,
+                                    "file": "",
+                                    "observable": {
+                                        "uri": args.observable_uri,
+                                        "name": args.observable_name
+                                    },
+                                    "unit": {
+                                        "uri": args.unit_uri,
+                                        "name": args.unit_name
+                                    }
                                 })
+    datastream.observation_unit = observation_unit # FIXME
+    
+    relpath = db.datastream_filepath(datastream)
+    datafile = db.new_file(farm.id, "datastreams", datastream.id, "values", relpath, "application/json")
     
     with open(args.files[0]) as f:
         data = json.load(f)
         db.file_store_json(datafile, data)
-        db.store(datastream, False)
 
-    zone.add_datastream(datastream, db)
+    datastream.file = datafile
+    datastream.store()

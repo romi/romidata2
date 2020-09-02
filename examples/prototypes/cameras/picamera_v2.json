@@ -1,0 +1,19 @@
+{
+    "short_name": "picamera_v2",
+    "name": "Raspberry Pi Camera Module v2",
+
+    "description": "8 Megapixels, Sony IMX219 sensor, 3280 x 2464 pixels, sensor area 3.68 x 2.76 mm (4.6 mm diagonal), pixel size 1.12 µm x 1.12 µm",
+    
+    "lens": "Fixed, focal length 3.04 mm, horizontal field of view 62.2 degrees, vertical field of view 48.8 degrees",
+    
+    "software_module": {
+        "id": "romiscanner.scan.XXX",
+        "version": "0.7",
+        "repository": "https://github.com/romi/romiscan",
+        "branch": "master"
+    },
+    "owner": "",
+    "parameters": {
+    }
+}
+

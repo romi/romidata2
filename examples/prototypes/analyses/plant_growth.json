@@ -1,0 +1,29 @@
+{
+    "id": "any",
+    "short_name": "plant_growth",
+    "name": "Plant growth curves",
+    "description": "...",
+    "observation_unit": "",
+    "scan": "",
+    "state": "Defined",
+    "observed_variables": [],
+    "tasks": [
+        {
+            "id": "any",
+            "short_name": "plant_growth",
+            "state": "Defined",
+            "software_module": {
+                "id": "?",
+                "version": "?",
+                "repository": "?",
+                "branch": "?"
+            },
+            "parameters": {},
+            "input_files": [],
+            "output_files": [],
+            "log_file": ""
+        }
+    ]
+}
+
+

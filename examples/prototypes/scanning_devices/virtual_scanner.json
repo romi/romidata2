@@ -12,6 +12,7 @@
             "parameters": {}
         }
     },
+    "owner": "",
     "software_module": {
         "id": "romiscanner.scan.Scan",
         "version": "0.7",

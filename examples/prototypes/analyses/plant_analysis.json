@@ -3,8 +3,8 @@
     "short_name": "plant_analysis",
     "name": "Plant Analysis",
     "description": "Does the following steps, starting from the stitched map: a. map registration: align maps in a common frame, b. map segmentation: segment map into plant versus soil, c. plant identification: identify individual plants, d. plant indexing: attribut an unique ID to each plant, e. plant growth analysis: measure the plant's projected leaf area (PLA) as a proxy of its size.",
-    "parent": "",
-    "scan_id": "",
+    "observation_unit": "",
+    "scan": "",
     "state": "Defined",
     "observed_variables": [],
     "tasks": [

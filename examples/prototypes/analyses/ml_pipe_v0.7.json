@@ -3,8 +3,8 @@
     "short_name": "ml_pipe_v0.7",
     "name": "Machine Learning Pipeline",
     "description": "The ML pipeline uses a CNN to categorize images pixels in the 2D images into the following categories: stem, leaf, flower, fruit, peduncle, and background. It then constructs the visual hull taking into account the categories.",
-    "parent": "",
-    "scan_id": "",
+    "observation_unit": "",
+    "scan": "",
     "state": "Defined",
 
     "observed_variables": [

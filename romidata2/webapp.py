@@ -45,7 +45,9 @@ class FarmList(RomiResource):
             response.append({
                 'id': farm.id,
                 'short_name': farm.short_name,
-                'name': farm.name })
+                'name': farm.name,
+                'location': farm.location,
+                'photo': farm.photo.id if farm.photo else "" })
         return response
 
     
@@ -60,9 +62,14 @@ class FarmInfo(RomiResource):
             'short_name': farm.short_name,
             'name': farm.name,
             'description': farm.description,
+            'address': farm.address,
+            'country': farm.country,
             'license': farm.license,
             'people': [ p.serialize() for p in farm.people ],
-            'zones': [{"id": z.id, "short_name": z.short_name} for z in farm.zones ] }
+            'crops': [{"id": obj.id, "short_name": obj.short_name}
+                      for obj in farm.observation_units
+                      if obj.type == "crop" ] }#,
+            #'zones': [{"id": obj.id, "short_name": obj.short_name} for obj in farm.zones ] }
 
     
 class ZoneInfo(RomiResource):
@@ -77,14 +84,68 @@ class ZoneInfo(RomiResource):
         return {
             'id': zone.id,
             'farm': farm.id,
-            'short_name': zone.short_name,
-            'scans': [{"id": s.id, "date": s.date.isoformat()} for s in zone.scans],
-            'datastreams': [{"id": d.id,
-                             "observable": d.observable.name,
-                             "unit": d.unit.name} for d in zone.datastreams]
+            'short_name': zone.short_name
         }
 
     
+class ObservationUnitInfo(RomiResource):
+    def __init__(self, app, otype):
+        super().__init__(app)
+        self.__type = otype
+        
+    def get(self, obj_id: str):
+        obj = self.db.lookup(obj_id)
+        if (obj.classname != "ObservationUnit"
+            or obj.type != self.__type):
+            abort(404)
+        farm = obj.context
+        r = {
+            'id': obj.id,
+            'short_name': obj.short_name,
+            'farm': farm.id,
+            'zone': obj.zone.id,
+            'parent': obj.parent.id if obj.parent else "",
+            'children': [{
+                "id": child.id,
+                "type": child.type
+            } for child in obj.children],
+            'scans': [{
+                "id": obj.id,
+                "date": obj.date.isoformat()
+            } for obj in obj.scans],
+            'datastreams': [{
+                "id": d.id,
+                "observable": d.observable.name,
+                "unit": d.unit.name
+            } for d in obj.datastreams],
+            'notes': [{
+                "id": obj.id,
+                "author": {"id": obj.author.id, "short_name": obj.author.short_name},
+                "date": obj.date.isoformat(),
+                "type": obj.type,
+                "text": obj.text
+            } for obj in obj.notes],
+            'analyses': [{
+                "id": analysis.id,
+                "short_name": analysis.short_name,
+                "name": analysis.name,
+                "scan": analysis.scan.id if analysis.scan != None else "",
+                "state": analysis.state
+            } for analysis in obj.analyses]
+        }
+        return r
+
+
+class CropInfo(ObservationUnitInfo):
+    def __init__(self, app):
+        super().__init__(app, 'crop')
+
+
+class PlantInfo(ObservationUnitInfo):
+    def __init__(self, app):
+        super().__init__(app, 'plant')
+
+        
 class ScanInfo(RomiResource):
     def __init__(self, app):
         super().__init__(app)
@@ -94,21 +155,20 @@ class ScanInfo(RomiResource):
         if scan.classname != "Scan":
             abort(404)
         
-        zone = scan.parent
-        farm = zone.farm
+        observation_unit = scan.observation_unit
+        farm = observation_unit.context
         
-        analyses = []
-        for analysis in zone.analyses:
-            if analysis.scan_id == scan_id:
-                analyses.append({
-                    "id": analysis.id,
-                    "short_name": analysis.short_name,
-                    "name": analysis.name,
-                    "state": analysis.state })            
+        analyses = [{
+            "id": analysis.id,
+            "short_name": analysis.short_name,
+            "name": analysis.name,
+            "state": analysis.state
+        } for analysis in scan.analyses]
+
         return {
             "id": scan.id,
             "farm": farm.id,
-            "zone": zone.id,
+            "observation_unit": {'id': observation_unit.id, 'type': observation_unit.type },
             "date": scan.date.isoformat(),
             "images": [i.id for i in scan.images],
             "analyses": analyses
@@ -124,15 +184,15 @@ class AnalysisInfo(RomiResource):
         if analysis.classname != "Analysis":
             abort(404)
             
-        zone = analysis.parent
-        farm = zone.farm
+        observation_unit = analysis.observation_unit
+        farm = observation_unit.context
             
         results = self.db.file_read_json(analysis.results_file)
         return {
             "id": analysis.id,
             "farm": farm.id,
-            "zone": zone.id,
-            "scan": analysis.scan_id,
+            "observation_unit": {'id': observation_unit.id, 'type': observation_unit.type },
+            "scan": analysis.scan.id if analysis.scan != None else "",
             "short_name": analysis.short_name,
             "name": analysis.name,
             "description": analysis.description,
@@ -150,13 +210,38 @@ class DataStreamInfo(RomiResource):
         if datastream.classname != "DataStream":
             abort(404)
             
-#        zone = analysis.parent
-#        farm = zone.farm
+        observation_unit = datastream.observation_unit
+        farm = observation_unit.context
             
         return {
             "id": datastream.id,
+            "farm": farm.id,
+            "observation_unit": {'id': observation_unit.id, 'type': observation_unit.type },
             "observable": datastream.observable.serialize(),
             "unit": datastream.unit.serialize()
+        }
+
+
+class NoteInfo(RomiResource):
+    def __init__(self, app):
+        super().__init__(app)
+
+    def get(self, ID: str):
+        note = self.db.lookup(datastream_id)
+        if note.classname != "Note":
+            abort(404)
+            
+        observation_unit = datastream.observation_unit
+        farm = observation_unit.context
+            
+        return {
+            "id": note.id,
+            "farm": farm.id,
+            "observation_unit": {'id': observation_unit.id, 'type': observation_unit.type },
+            "author": { "id": note.author.id, "short_name": note.author.short_name},
+            "date": note.date.isoformat(),
+            "type": note.type,
+            "text": note.text
         }
 
     
@@ -204,6 +289,7 @@ class ZoneImage(RomiResource):
         response.headers['Content-Type'] = mimetype
         return response
 
+
 class FarmWebApp(Flask):
     def __init__(self, db: IDatabase, cache: WebCache):
         super(FarmWebApp, self).__init__("Farmer's Dashboard API")
@@ -232,7 +318,15 @@ class FarmWebApp(Flask):
                                 resource_class_kwargs={'app': self})
         
         self.__api.add_resource(ZoneInfo,
-                                '/zones/<string:zone_id>',
+                                '/zones-xxx/<string:zone_id>',
+                                resource_class_kwargs={'app': self})
+                
+        self.__api.add_resource(CropInfo,
+                                '/crops/<string:obj_id>',
+                                resource_class_kwargs={'app': self})
+                
+        self.__api.add_resource(PlantInfo,
+                                '/plants/<string:obj_id>',
                                 resource_class_kwargs={'app': self})
                 
         self.__api.add_resource(ScanInfo,
@@ -247,6 +341,10 @@ class FarmWebApp(Flask):
                                 '/datastreams/<string:datastream_id>',
                                 resource_class_kwargs={'app': self})
 
+        self.__api.add_resource(NoteInfo,
+                                '/notes/<string:ID>',
+                                resource_class_kwargs={'app': self})
+        
         self.__api.add_resource(DataStreamValues,
                                 '/datastreams/<string:datastream_id>/values',
                                 resource_class_kwargs={'app': self})
@@ -255,6 +353,3 @@ class FarmWebApp(Flask):
                                 '/images/<string:image_id>',
                                 resource_class_kwargs={'app': self})
                 
-        
- #        self.__api.add_resource(Image, '/farms/<string:farm_id>/zones/<string:zone_id>/files/<string:file_id>')
- #       self.__api.add_resource(Image, '/image/<string:farm_id>/<string:zone_id>/<string:file_id>')

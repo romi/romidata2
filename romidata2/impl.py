@@ -13,6 +13,7 @@ import random
 import string
 import uuid
 from datetime import datetime
+import functools
 
 from tzlocal import get_localzone
 import dateutil.parser
@@ -30,39 +31,119 @@ __email__ = "peter@hanappe.com"
 __status__ = "Prototype"
 __version__ = "0.0.1"
 
+
 def new_id() -> str:
     """Generates a new random ID."""
     return str(uuid.uuid4())
+
 
 def current_date() -> datetime:
     """Generates a datetime object with the current date. The timezone will be set."""
     tz = get_localzone()
     return tz.localize(datetime.now())
 
-    
-class File(IFile):
-    def __init__(self):
-        self.__id = ""
-        self.__source_name = ""
-        self.__source_id = ""
-        self.__short_name = ""
-        self.__date_created = None
-        self.__path = ""
-        self.__mimetype = ""
         
-    def clone(self):
-        raise NotImplementedError()
-    
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
+def lookup_id_list(db: IDatabase, array: List[str]) -> List[Any]:
+    r = []
+    for the_id in array:
+        obj = db.lookup(the_id)
+        if obj:
+            r.append(obj)
+        else:
+            raise ValueError("ID with value %s does not exist" % the_id)
+    return r
+
+
+def find(given_value: str, array: List[Any], attr: str):
+    r = None
+    for obj in array:
+        obj_value = getattr(obj, attr)
+        if obj_value == given_value:
+            r = obj
+            break
+    return r
+
+
+class BaseImpl():
+    def __init__(self, factory, database, classname):
+        self.__id = new_id()
+        self.__classname = classname
+        self.__modified = False
+        self.__factory = factory
+        self.__database = database
+
+    def modifies(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            self.modified = True
+            return func(self, *args, **kwargs)
+        return wrapper
+
+    @property
+    def classname(self) -> str:
+        return self.__classname
         
     @property
     def id(self) -> str:
         return self.__id
 
     @id.setter
+    @modifies
     def id(self, value: str):
         self.__id = value
+
+    @property
+    def modified(self) -> bool:
+        return self.__modified
+
+    @modified.setter
+    def modified(self, value: bool) -> None:
+        self.__modified = value
+
+    @property
+    def factory(self) -> IFactory:
+        return self.__factory
+
+    @property
+    def database(self) -> Any:
+        return self.__database
+
+    def clone(self):
+        c = copy.deepcopy(self)
+        c.__id = new_id()
+        c.__modified = True
+        return c
+    
+    def store(self) -> None:
+        self.database.store(self)
+
+    def restore(self) -> None:
+        pass
+
+    @modifies
+    def parse(self, properties: dict):
+        if 'id' in properties:
+            self.__id = properties['id']
+
+    def serialize(self) -> dict:
+        raise NotImplementedError()
+
+    
+class File(BaseImpl, IFile):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__owner_id = ""
+        self.__source_name = ""
+        self.__source_id = ""
+        self.__short_name = ""
+        self.__date_created = None
+        self.__path = ""
+        self.__mimetype = ""
+
+    @property
+    def owner(self) -> str:
+        return self.__owner_id
 
     @property
     def source_name(self) -> List[str]:
@@ -111,9 +192,18 @@ class File(IFile):
     @mimetype.setter
     def mimetype(self, value: str):
         self.__mimetype = value
+
+    ##
+    
+    def clone(self):
+        raise NotImplementedError()
+    
+    def store(self) -> None:
+        raise NotImplementedError()
         
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__owner_id = properties["owner"]
         self.source_name = properties["source_name"]
         self.source_id = properties["source_id"]
         self.short_name = properties["short_name"]
@@ -123,6 +213,7 @@ class File(IFile):
 
     def serialize(self) -> dict:
         return { 'id': self.id,
+                 'owner': self.__owner_id,
                  'source_name': self.source_name,
                  'source_id': self.source_id,
                  'short_name': self.short_name,
@@ -131,31 +222,15 @@ class File(IFile):
                  'mimetype': self.mimetype }
 
 
-
-class Person(IPerson):
-    def __init__(self):
-        self.__id = ""
+class Person(BaseImpl, IPerson):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__name = ""
         self.__email = ""
         self.__affiliation = ""
         self.__role = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        
-    def clone(self):
-        c = copy.copy(self)
-        c.__id = new_id()
-        return c;
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def short_name(self) -> str:
@@ -188,10 +263,6 @@ class Person(IPerson):
     @affiliation.setter
     def affiliation(self, value: str):
         self.__affiliation = value
-        
-    @property
-    def id(self) -> str:
-        return self.__id
 
     @property
     def role(self) -> str:
@@ -200,9 +271,14 @@ class Person(IPerson):
     @role.setter
     def role(self, value: str):
         self.__role = value
-
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+        
+    ##
+        
+    def store(self) -> None:
+        self.database.store(self)
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.name = properties["name"]
         self.email = properties["email"]
@@ -218,31 +294,18 @@ class Person(IPerson):
                  'role': self.role }
 
     
-class Camera(ICamera):
-    def __init__(self):
+class Camera(BaseImpl, ICamera):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__name = ""
         self.__description = ""
         self.__lens = ""
+        self.__owner = None
+        self.__owner_id = ""
         self.__software_module = None
         self.__parameters = None
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-        
-    def clone(self):
-        c = copy.copy(self)
-        c.software_module = self.software_module.clone()
-        c.parameters = self.parameters.clone()
-        return c;
-    
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
         
     @property
     def short_name(self):
@@ -275,6 +338,15 @@ class Camera(ICamera):
     @lens.setter
     def lens(self, value: str):
         self.__lens = value
+
+    @property
+    def owner(self) -> Any:
+        return self.__owner
+
+    @owner.setter
+    def owner(self, p: Any):
+        self.__owner = p
+        self.__owner_id = p.id
         
     @property
     def software_module(self) -> ISoftwareModule:
@@ -291,50 +363,54 @@ class Camera(ICamera):
     @parameters.setter
     def parameters(self, values: IParameters):
         self.__parameters = values
-
-    def parse(self, factory: IFactory, properties: dict):
+        
+    ##
+        
+    def clone(self):
+        c = super().clone()
+        c.software_module = self.software_module.clone()
+        c.parameters = self.parameters.clone()
+        c.__owner_id = ""
+        c.__owner = None
+        return c;
+    
+    def restore(self) -> None:
+        self.__owner = self.database.lookup(self.__owner_id)
+        self.__owner.add_camera(self)
+        
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.name = properties["name"]
         self.description = properties["description"]
         self.lens = properties["lens"]
-        self.software_module = factory.create("SoftwareModule",
-                                              properties["software_module"])
-        self.parameters = factory.create("Parameters",
-                                         properties["parameters"])
+        self.__owner_id = properties["owner"]
+        self.software_module = self.factory.create("SoftwareModule",
+                                                   properties["software_module"])
+        self.parameters = self.factory.create("Parameters",
+                                              properties["parameters"])
 
     def serialize(self) -> dict:
         return { 'short_name': self.short_name,
                  'name': self.name,
                  'description': self.description,
                  'lens': self.lens,
+                 'owner': self.__owner_id,
                  'software_module': self.software_module,
                  'parameters': self.parameters }
 
 
-class ScanningDevice(IScanningDevice):
-    def __init__(self):
+class ScanningDevice(BaseImpl, IScanningDevice):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__name = ""
         self.__description = ""
+        self.__owner = None
+        self.__owner_id = ""
         self.__software_module = None
         self.__parameters = None
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-        
-    def clone(self):
-        c = copy.copy(self)
-        c.software_module = self.software_module.clone()
-        c.parameters = self.parameters.clone()
-        return c;
-    
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
         
     @property
     def short_name(self):
@@ -359,6 +435,15 @@ class ScanningDevice(IScanningDevice):
     @description.setter
     def description(self, value: str):
         self.__description = value
+
+    @property
+    def owner(self) -> Any:
+        return self.__owner
+
+    @owner.setter
+    def owner(self, p: Any):
+        self.__owner = p
+        self.__owner_id = p.id
         
     @property
     def software_module(self) -> ISoftwareModule:
@@ -376,44 +461,48 @@ class ScanningDevice(IScanningDevice):
     def parameters(self, value: IParameters):
         self.__parameters = value
 
-    def parse(self, factory: IFactory, properties: dict):
+    ##
+    
+    def clone(self):
+        c = super().clone()
+        c.software_module = self.software_module.clone()
+        c.parameters = self.parameters.clone()
+        c.__owner_id = ""
+        c.__owner = None
+        return c; 
+    
+    def restore(self) -> None:
+        self.__owner = self.database.lookup(self.__owner_id)
+        self.__owner.add_scanning_device(self)
+       
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.name = properties["name"]
         self.description = properties["description"]
-        self.software_module = factory.create("SoftwareModule",
-                                              properties["software_module"])
-        self.parameters = factory.create("Parameters", properties["parameters"])
+        self.__owner_id = properties["owner"]
+        self.software_module = self.factory.create("SoftwareModule",
+                                                   properties["software_module"])
+        self.parameters = self.factory.create("Parameters",
+                                              properties["parameters"])
         
     def serialize(self) -> dict:
         return { 'short_name': self.short_name,
                  'name': self.name,
                  'description': self.description,
+                 'owner': self.__owner_id,
                  'software_module': self.software_module,
                  'parameters': self.parameters }
 
         
-class Sample(ISample):
-    def __init__(self):
-        self.__id = ""
+class Sample(BaseImpl, ISample):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__description = ""
         self.__development_stage = ""
         self.__anatomical_entity = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-        
-    def clone(self):
-        c = copy.copy(self)
-        return c;
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def short_name(self) -> str:
@@ -447,8 +536,13 @@ class Sample(ISample):
     def anatomical_entity(self, value: str):
         self.__anatomical_entity = value
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    ## 
+    
+    def store(self) -> None:
+        raise NotImplementedError()
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.description = properties["description"]
         self.development_stage = properties["development_stage"]
@@ -462,38 +556,57 @@ class Sample(ISample):
                  'anatomical_entity': self.anatomical_entity }
 
     
-class ObservationUnit(IObservationUnit):
-    def __init__(self):
-        self.__id = ""
+class ObservationUnit(BaseImpl, IObservationUnit):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__type = ""
+        self.__short_name = ""
+        self.__context = None
+        self.__context_id = ""
+        self.__zone = None
+        self.__zone_id = ""
         self.__spatial_distribution = ""
         self.__factor_values = {}
         self.__samples = []
+        self.__parent = None
+        self.__parent_id = ""
+        self.__children = []
         self.__description_file = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        c = copy.deepcopy(self)
-        c.__samples = [v.clone() for v in self.samples]
-        return c
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
+        self.__scans = []
+        self.__analyses = []
+        self.__datastreams = []
+        self.__notes = []
         
     @property
     def type(self) -> str:
         return self.__type
 
-    @type.setter
-    def type(self, value: str):
-        self.__type = value
+    @property
+    def short_name(self) -> str:
+        return self.__short_name
+
+    @short_name.setter
+    def short_name(self, value: str):
+        self.__short_name = value
+
+    @property
+    def context(self) -> Any:
+        return self.__context
+
+    @context.setter
+    def context(self, p: Any):
+        self.__context = p
+        self.__context_id = p.id
+        
+    @property
+    def zone(self) -> Any:
+        return self.__zone
+
+    @zone.setter
+    def zone(self, value: Any):
+        self.__zone = value
+        self.__zone_id = value.id
     
     @property
     def spatial_distribution(self) -> str:
@@ -507,17 +620,8 @@ class ObservationUnit(IObservationUnit):
     def factor_values(self) -> dict:
         return self.__factor_values
 
-    @factor_values.setter
-    def factor_values(self, values: dict):
-        self.__factor_values = values
-
-    @property
-    def samples(self) -> List[ISample]:
-        return self.__samples
-
-    @samples.setter
-    def samples(self, values: List[ISample]):
-        self.__samples = values
+    def set_factor_value(self, key: str, value: str):
+        self.__factor_values[key] = value
         
     @property
     def description_file(self) -> str:
@@ -526,30 +630,127 @@ class ObservationUnit(IObservationUnit):
     @description_file.setter
     def description_file(self, value: str):
         self.__description_file = value
+    
+    @property
+    def samples(self) -> List[ISample]:
+        return self.__samples
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
-        self.type = properties["type"]
-        self.spatial_distribution = properties["spatial_distribution"]
-        self.factor_values = properties["factor_values"]
-        if "description_file" in properties:
-            self.description_file = properties["description_file"]
+    def add_sample(self, sample: ISample):
+        if find(sample.id, self.samples, "id") == None:
+            self.__samples.append(sample)
+
+    @property
+    def parent(self) -> Any:
+        return self.__parent
+
+    @parent.setter
+    def parent(self, value: Any) -> None:
+        self.__parent = value
+        self.__parent_id = value.id
+        print("ObservationUnit.parent '%s'" % self.__parent_id)
+
+    @property
+    def children(self) -> List[Any]:
+        return self.__children
+
+    def add_child(self, child: Any) -> None:
+        print("ObservationUnit.add_child")
+        if find(child.id, self.children, "id") == None:
+            self.children.append(child)
+            child.parent = self
+            
+    @property
+    def datastreams(self) -> List[IDataStream]:
+        return self.__datastreams
+
+    def add_datastream(self, datastream: IDataStream):
+        if find(datastream.id, self.datastreams, "id") == None:
+            self.datastreams.append(datastream)
+            datastream.observation_unit = self
+        
+    @property
+    def scans(self) -> List[Any]:
+        return self.__scans
+    
+    def add_scan(self, scan: Any):
+        if find(scan.id, self.scans, "id") == None:
+            self.scans.append(scan)
+            scan.observation_unit = self
+            
+    @property
+    def analyses(self) -> List[IAnalysis]:
+        return self.__analyses
+        
+    def add_analysis(self, analysis: IAnalysis):
+        if find(analysis.id, self.analyses, "id") == None:
+            self.analyses.append(analysis)
+    
+    @property
+    def notes(self) -> List[INote]:
+        return self.__notes
+        
+    def add_note(self, note: INote):
+        if find(note.id, self.notes, "id") == None:
+            note.observation_unit = self
+            self.notes.append(note)
+
+    ##
+
+    def restore(self) -> None:
+        self.__context = self.database.lookup(self.__context_id)
+        self.__context.add_observation_unit(self)
+        if self.__zone_id:
+            self.__zone = self.database.lookup(self.__zone_id)
+            self.__zone.add_observation_unit(self)
+        print("ObservationUnit.restore: parent='%s'" % self.__parent_id)
+        if self.__parent_id:
+            self.__parent = self.database.lookup(self.__parent_id)
+            self.__parent.add_child(self)
+            
+    def clone(self):
+        c = super().clone()
+        c.__samples = [v.clone() for v in self.samples]
+        c.__scans = []
+        c.__analyses = []
+        c.__datastreams = []
+        return c
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
+        # Required fields
+        self.__type = properties["type"]
+        self.short_name = properties["short_name"]
+        self.__context_id = properties["context"]
+        
+        # Optional fields
+        self.__zone_id = properties.get("zone", "")            
+        self.__factor_values = properties.get("factor_values", {})
+        self.spatial_distribution = properties.get("spatial_distribution", "")
+        self.description_file = properties.get("description_file", "")            
+        self.__parent_id = properties.get("parent", "")            
+        if "samples" in properties:
+            self.__samples = self.factory.create_list("Sample", properties["samples"])
         else:
-            self.description_file = ""
-        self.samples = factory.create_list("Sample", properties["samples"])
+            self.__samples = []
         
     def serialize(self) -> dict:
+        print("ObservationUnit.serialize: parent '%s'" % self.__parent_id)
         return { 'id': self.id,
                  'type': self.type,
+                 'short_name': self.short_name,
+                 'context': self.__context_id,
+                 'zone': self.__zone_id,
                  'spatial_distribution': self.spatial_distribution,
                  'factor_values': self.factor_values,
                  'samples': self.samples,
+                 'parent': self.__parent_id,
                  'description_file': self.description_file }
 
     
-class BiologicalMaterial(IBiologicalMaterial):
-    def __init__(self):
-        self.__id = ""
+class BiologicalMaterial(BaseImpl, IBiologicalMaterial):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__description = ""
         self.__genus = ""
@@ -557,21 +758,6 @@ class BiologicalMaterial(IBiologicalMaterial):
         self.__intraspecific_name = ""
         self.__source_id = ""
         self.__source_doi = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        c = copy.deepcopy(self)
-        return c
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
 
     @property
     def short_name(self) -> str:
@@ -629,8 +815,13 @@ class BiologicalMaterial(IBiologicalMaterial):
     def source_doi(self, value: str):
         self.__source_doi = value
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    ##
+    
+    def store(self) -> None:
+        raise NotImplementedError()
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.description = properties["description"]
         self.genus = properties["genus"]
@@ -650,112 +841,153 @@ class BiologicalMaterial(IBiologicalMaterial):
                  'source_doi': self.source_doi }
 
         
-class Pose(IPose):
-    def __init__(self):
-        pass
+class Pose(BaseImpl, IPose):
     
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        raise NotImplementedError()
-    
-    def parse(self, factory: IFactory, properties: dict):
-        raise NotImplementedError()
-
-    def serialize(self) -> dict:
-        raise NotImplementedError()
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
 
     
-class Observable(IObservable):
-    def __init__(self):
-        self.__id = ""
+class Observable(BaseImpl, IObservable):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__uri = ""
         self.__name = ""
-    
+
     @property
-    def id(self) -> str:
-        return self.__id
-    
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
+    def uri(self) -> str:
+        return self.__uri
 
     @property
     def name(self) -> str:
         return self.__name
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.copy(self)
     
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__uri = properties["uri"]
         self.__name = properties["name"]
 
     def serialize(self) -> dict:
-        return { "id": self.id, "name": self.name }
+        return { "id": self.id, "uri": self.uri, "name": self.name }
 
         
-
-class Unit(IUnit):
-    def __init__(self):
-        self.__id = ""
+class Unit(BaseImpl, IUnit):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__uri = ""
         self.__name = ""
-    
+
     @property
-    def id(self) -> str:
-        return self.__id
-    
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
+    def uri(self) -> str:
+        return self.__uri
 
     @property
     def name(self) -> str:
         return self.__name
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.copy(self)
     
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__uri = properties["uri"]
         self.__name = properties["name"]
 
     def serialize(self) -> dict:
-        return { "id": self.id, "name": self.name }
+        return { "id": self.id, "uri": self.uri, "name": self.name }
 
         
+class Note(BaseImpl, INote):
+        
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__author = None
+        self.__author_id = ""
+        self.__observation_unit = None
+        self.__observation_unit_id = ""
+        self.__date = None
+        self.__type = ""
+        self.__text = ""
 
-class DataStream(IDataStream):
-    def __init__(self):
-        self.__id = ""
+    @property
+    def author(self) -> IPerson:
+        return self.__author
+
+    @author.setter
+    def author(self, value: IPerson) -> None:
+        self.__author = value
+        self.__author_id = value.id
+
+    @property
+    def observation_unit(self) -> Any:
+        return self.__observation_unit
+
+    @observation_unit.setter
+    def observation_unit(self, value: Any) -> None:
+        self.__observation_unit = value
+        self.__observation_unit_id = value.id
+
+    @property
+    def date(self) -> datetime:
+        return self.__date
+
+    @property
+    def type(self) -> str:
+        return self.__type
+    
+    @property
+    def text(self) -> str:
+        return self.__text
+
+    def restore(self) -> None:
+        self.__author = self.database.lookup(self.__author_id)
+        self.__observation_unit = self.database.lookup(self.__observation_unit_id)
+        self.__observation_unit.add_note(self)
+        
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__author_id = properties["author"]
+        self.__observation_unit_id = properties["observation_unit"]
+        self.__date = dateutil.parser.parse(properties["date"])
+        self.__type = properties["type"]
+        self.__text = properties["text"]
+        
+    def serialize(self) -> dict:
+        return { 'id': self.id,
+                 'author': self.__author_id,
+                 'observation_unit': self.__observation_unit_id,
+                 'date': self.date.isoformat(),
+                 'type': self.type,
+                 'text': self.text
+        }
+
+    
+class DataStream(BaseImpl, IDataStream):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__observation_unit = None
+        self.__observation_unit_id = ""
         self.__observable = None
         self.__unit = None
+        self.__file = None
         self.__file_id = ""
 
-    def clone(self):
-        return copy.copy(self)
-        
     @property
-    def id(self) -> str:
-        return self.__id
+    def observation_unit(self) -> Any:
+        return self.__observation_unit
 
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
+    @observation_unit.setter
+    def observation_unit(self, value: Any) -> None:
+        self.__observation_unit = value
+        self.__observation_unit_id = value.id
+
+    @property
+    def file(self) -> IFile:
+        return self.__file
+
+    @file.setter
+    def file(self, ifile: IFile) -> None:
+        self.__file = ifile
+        self.__file_id = ifile.id
 
     @property
     def observable(self) -> IObservable:
@@ -764,10 +996,9 @@ class DataStream(IDataStream):
     @property
     def unit(self) -> IUnit:
         return self.__unit
-    
+
     def get_values(self, db) -> List[dict]:
-        ifile = db.get_file(self.__file_id)
-        return db.file_read_json(ifile)
+        return self.database.file_read_json(self.__file)
     
     def select(self, db, start_date: datetime = None,
                end_date: datetime = None) -> List[dict]:
@@ -784,35 +1015,38 @@ class DataStream(IDataStream):
                 and (end == None or date <= end)):
                 r.append(v)
         return r
-            
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
-        self.__observable = factory.create("Observable", properties["observable"])
-        self.__unit = factory.create("Unit", properties["unit"])
+
+    ##
+    
+    def restore(self) -> None:
+        self.__observation_unit = self.database.lookup(self.__observation_unit_id)
+        self.__observation_unit.add_datastream(self)
+        self.__file = self.database.get_file(self.__file_id)
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__observation_unit_id = properties["observation_unit"]
+        self.__observable = self.factory.create("Observable",
+                                                properties["observable"])
+        self.__unit = self.factory.create("Unit", properties["unit"])
         self.__file_id = properties["file"]
 
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-
     def serialize(self) -> dict:
-        return { 'id': self.__id,
+        return { 'id': self.id,
+                 'observation_unit': self.__observation_unit_id,
                  'observable': self.observable.serialize(),
                  'unit': self.unit.serialize(),
                  'file': self.__file_id
         }
 
 
-class BoundingBox(IBoundingBox):
-    def __init__(self):
+class BoundingBox(BaseImpl, IBoundingBox):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__x = [0, 0]
         self.__y = [0, 0]
         self.__z = [0, 0]
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.copy(self)
 
     @property
     def x(self) -> List[float]:
@@ -840,8 +1074,14 @@ class BoundingBox(IBoundingBox):
     @abstractmethod
     def z(self, values: List[float]):
         self.__z = values
-    
-    def parse(self, factory: IFactory, properties: dict):
+
+    ##
+
+    def store(self) -> None:
+        raise NotImplementedError()
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.x = properties["x"]
         self.y = properties["y"]
         self.z = properties["z"]
@@ -852,44 +1092,34 @@ class BoundingBox(IBoundingBox):
                  'z': self.z }
 
     
-class Scan(IScan):
-    def __init__(self): 
-        self.__id = ""
-        self.__parent = None
-        self.__parent_id = ""
+class Scan(BaseImpl, IScan):
+    
+    def __init__(self, factory, database, classname): 
+        BaseImpl.__init__(self, factory, database, classname)
+        self.__observation_unit = None
+        self.__observation_unit_id = ""
         self.__date = ""
-        self.__person_names = []
-        self.__camera_name = ""
-        self.__scanning_device_name = ""
-        self.__observation_unit = ""
+        self.__people = []
+        self.__person_ids = []
+        self.__camera = None
+        self.__camera_id = ""
+        self.__scanning_device = None
+        self.__scanning_device_id = ""
+        self.__scan_path = ""
         self.__factor_values = {}
         self.__camera_poses = {}
         self.__bounding_box = None
-        self.__scan_path_name = None
         self.__images = []
-        
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
+        self.__analyses = []
 
-    def clone(self):
-        return copy.deepcopy(self)
-        
     @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
-                
-    @property
-    def parent(self) -> Any:
-        return self.__parent
-        
-    @parent.setter
-    def parent(self, value: Any):
-        self.__parent_id = value.id
-        self.__parent = value
+    def observation_unit(self) -> str:
+        return self.__observation_unit
+
+    @observation_unit.setter
+    def observation_unit(self, value: Any):
+        self.__observation_unit = value
+        self.__observation_unit_id = value.id
 
     @property
     def date(self) -> datetime:
@@ -900,36 +1130,16 @@ class Scan(IScan):
         self.__date = value
 
     @property
-    def person_names(self) -> List[str]:
-        return self.__person_names
-
-    @person_names.setter
-    def person_names(self, values: List[str]):
-        self.__person_names = values
+    def operators(self) -> List[IPerson]:
+        return self.__people
 
     @property
-    def camera_name(self) -> str:
-        return self.__camera_name
-
-    @camera_name.setter
-    def camera_name(self, value: str):
-        self.__camera_name = value
+    def camera(self) -> str:
+        return self.__camera
 
     @property
-    def scanning_device_name(self) -> str:
-        return self.__scanning_device_name
-
-    @scanning_device_name.setter
-    def scanning_device_name(self, value: str):
-        self.__scanning_device_name = value
-
-    @property
-    def observation_unit_id(self) -> str:
-        return self.__observation_unit_id
-
-    @observation_unit_id.setter
-    def observation_unit_id(self, value: str):
-        self.__observation_unit_id = value
+    def scanning_device(self) -> str:
+        return self.__scanning_device
 
     @property
     def bounding_box(self) -> IBoundingBox:
@@ -940,12 +1150,8 @@ class Scan(IScan):
         self.__bounding_box = value
 
     @property
-    def scan_path_name(self) -> str:
+    def scan_path(self) -> str:
         return self.__scan_path
-
-    @scan_path_name.setter
-    def scan_path_name(self, value: str):
-        self.__scan_path = value
         
     def camera_pose_types(self) -> List[str]:
         pass
@@ -973,59 +1179,59 @@ class Scan(IScan):
     @property
     def images(self) -> List[IFile]:
         return self.__images
+            
+    @property
+    def analyses(self) -> List[IAnalysis]:
+        return self.__analyses
+        
+    def add_analysis(self, analysis: IAnalysis):
+        print("Scan.add_analysis")
+        if find(analysis.id, self.analyses, "id") == None:
+            self.analyses.append(analysis)
+            analysis.scan = self
 
-    def parse(self, factory: IFactory, properties: dict): 
-        self.__id = properties["id"]
-        self.__parent_id = properties["parent"]
-        self.date = dateutil.parser.parse(properties["date"])
-        self.person_names = properties["person_names"]
-        self.camera_name = properties["camera_name"]
-        self.scanning_device_name = properties["scanning_device_name"]
-        self.observation_unit_id = properties["observation_unit_id"]
-        self.factor_values = properties["factor_values"]
-        self.scan_path_name = properties["scan_path_name"]
+    ##
+
+    def restore(self) -> None:
+        self.__observation_unit = self.database.lookup(self.__observation_unit_id)
+        self.__observation_unit.add_scan(self)
+        self.__camera = self.database.lookup(self.__camera_id)
+        self.__scanning_device = self.database.lookup(self.__scanning_device_id)
+        self.__images = self.database.select_files("scan", self.id, None)
+
+    def parse(self, properties: dict): 
+        super().parse(properties)
+        self.__observation_unit_id = properties["observation_unit"]
+        self.__date = dateutil.parser.parse(properties["date"])
+        self.__person_ids = properties["people"]
+        self.__camera_id = properties["camera"]
+        self.__scanning_device_id = properties["scanning_device"]
+        self.__factor_values = properties["factor_values"]
+        self.__scan_path = self.factory.create("ScanPath", properties["scan_path"])
         # TODO: load poses
         # TODO: load bounding box
-
-    def restore(self, db: Any) -> None:
-        self.__parent = db.lookup(self.__parent_id)
-        self.__images = db.select_files("scan", self.id, None)
         
     def serialize(self) -> dict:
         return { 'id': self.id,
-                 'parent': self.__parent_id,
+                 'observation_unit': self.__observation_unit_id,
                  'date': self.date.isoformat(),
-                 'person_names': self.person_names,
-                 'camera_name': self.camera_name,
-                 'scanning_device_name': self.scanning_device_name,
-                 'observation_unit_id': self.observation_unit_id,
+                 'people': self.__person_ids,
+                 'camera': self.__camera_id,
+                 'scanning_device': self.__scanning_device_id,
                  'factor_values': self.factor_values,
-                 'scan_path_name': self.scan_path_name
+                 'scan_path': self.scan_path
                  # POSES
                  # BOUNDING BOX
         }
 
         
-class SoftwareModule(ISoftwareModule):
-    def __init__(self):
-        self.__id = ""
+class SoftwareModule(BaseImpl, ISoftwareModule):
+
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__version = ""
         self.__repository = ""
         self.__branch = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.deepcopy(self)
-
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def version(self) -> str:
@@ -1051,8 +1257,13 @@ class SoftwareModule(ISoftwareModule):
     def branch(self, value: str):
         self.__branch = value
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    ##
+
+    def store(self) -> None:
+        raise NotImplementedError()
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.version = properties["version"]
         self.repository = properties["repository"]
         self.branch = properties["branch"]
@@ -1064,23 +1275,11 @@ class SoftwareModule(ISoftwareModule):
                  'branch': self.branch }
 
 
-class Parameters(IParameters):
-    def __init__(self):
+class Parameters(BaseImpl, IParameters):
+
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__values = {}
-
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
-        
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.deepcopy(self)
 
     def get_value(self, key: str) -> Any:
         return self.__values[key]
@@ -1093,35 +1292,27 @@ class Parameters(IParameters):
         # the values are cloned to avoid modification without calling
         # set()
         return copy.deepcopy(self.__values) 
+
+    ##
+
+    def store(self) -> None:
+        raise NotImplementedError()
     
-    def parse(self, factory: IFactory, properties: dict):
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.__values = copy.deepcopy(properties)
 
     def serialize(self) -> dict:
         return self.__values
 
 
-class ScanPath(IScanPath):
-    def __init__(self):
+class ScanPath(BaseImpl, IScanPath):
+
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__type = ""
         self.__parameters = None
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        c = copy.copy(self)
-        c.parameters = self.parameters.clone()
-        return c
-
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
         
     @property
     def short_name(self):
@@ -1146,12 +1337,23 @@ class ScanPath(IScanPath):
     @parameters.setter
     def parameters(self, value: IParameters):
         self.__parameters = value
+
+    ##
+
+    def clone(self):
+        c = super().clone()
+        c.parameters = self.parameters.clone()
+        return c
     
-    def parse(self, factory: IFactory, properties: dict):
+    def store(self) -> None:
+        raise NotImplementedError()
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.type = properties["type"]
-        self.parameters = factory.create("Parameters",
-                                         properties["parameters"])
+        self.parameters = self.factory.create("Parameters",
+                                              properties["parameters"])
 
     def serialize(self) -> dict:
         return { 'short_name': self.short_name,
@@ -1159,10 +1361,10 @@ class ScanPath(IScanPath):
                  'parameters': self.parameters.serialize() }
 
     
-class Task(ITask):
+class Task(BaseImpl, ITask):
     
-    def __init__(self):
-        self.__id = ""
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__software_module = None
         self.__parameters = None
@@ -1170,28 +1372,6 @@ class Task(ITask):
         self.__input_files = []
         self.__output_files = []
         self.log_file = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        c = copy.copy(self)
-        c.id = new_id()
-        c.parameters = self.parameters.clone()
-        c.software_module = self.software_module.clone()
-        c.state = self.STATE_DEFINED
-        c.__input_files = []
-        c.output_files = [s for s in self.output_files]
-        c.log_file = ""
-        return c
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def short_name(self):
@@ -1243,7 +1423,6 @@ class Task(ITask):
         self.__output_files = values
 
     def add_output_file(self, output_file: IFile):
-        self.parent.add_file(output_file)
         self.__output_files.append(output_file.id)
         
     @property
@@ -1253,17 +1432,29 @@ class Task(ITask):
     @log_file.setter
     def log_file(self, value: str):
         self.__log_file = value
-    
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+
+    ##
+
+    def clone(self):
+        c = super().clone()
+        c.parameters = self.parameters.clone()
+        c.software_module = self.software_module.clone()
+        c.state = self.STATE_DEFINED
+        c.__input_files = []
+        c.output_files = [s for s in self.output_files]
+        c.log_file = ""
+        return c
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.state = properties["state"]
-        self.software_module = factory.create("SoftwareModule",
-                                              properties["software_module"])
-        self.parameters = factory.create("Parameters",
-                                         properties["parameters"])
+        self.software_module = self.factory.create("SoftwareModule",
+                                                   properties["software_module"])
+        self.parameters = self.factory.create("Parameters",
+                                              properties["parameters"])
         self.__input_files = properties["input_files"]
-        #self.output_files = factory.create_list("File", properties["output_files"])
+        #self.output_files = self.factory.create_list("File", properties["output_files"])
         self.output_files = properties["output_files"]
         self.log_file = properties["log_file"]
 
@@ -1278,27 +1469,14 @@ class Task(ITask):
                  'log_file': self.log_file }
 
 
-class ObservedVariable(IObservedVariable):
-    def __init__(self):
-        self.__id = ""
+class ObservedVariable(BaseImpl, IObservedVariable):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__name = ""
         self.__trait = ""
         self.__scale = ""
         self.__time_scale = ""
-
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    def clone(self):
-        return copy.deepcopy(self)
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def name(self) -> str:
@@ -1331,9 +1509,11 @@ class ObservedVariable(IObservedVariable):
     @time_scale.setter
     def time_scale(self, value: str):
         self.__time_scale = value    
-        
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+
+    ##
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.name = properties["name"]
         self.trait = properties["trait"]
         self.scale = properties["scale"]
@@ -1347,48 +1527,21 @@ class ObservedVariable(IObservedVariable):
                  'time_scale': self.time_scale }
 
         
-class Analysis(IAnalysis):
+class Analysis(BaseImpl, IAnalysis):
     
-    def __init__(self):
-        self.__id = new_id()
-        self.__parent = None
-        self.__parent_id = ""
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__name = ""
         self.__description = ""
+        self.__observation_unit = None
+        self.__observation_unit_id = ""
+        self.__scan = None
         self.__scan_id = ""
         self.__state = ""
         self.__observed_variables = []
         self.__tasks = []
         self.__results_file = None
-
-    def clone(self):
-        c = copy.copy(self)
-        c.id = new_id()
-        c.state = self.STATE_DEFINED
-        c.__observed_variables = [v.clone() for v in self.observed_variables]
-        c.__tasks = [v.clone() for v in self.tasks]
-        return c
-    
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
-        
-    @property
-    def parent(self):
-        return self.__parent
-        
-    @parent.setter
-    def parent(self, value: Any):
-        self.__parent_id = value.id
-        self.__parent = value
     
     @property
     def short_name(self):
@@ -1413,14 +1566,25 @@ class Analysis(IAnalysis):
     @description.setter
     def description(self, value: str):
         self.__description = value
+                
+    @property
+    def observation_unit(self) -> str:
+        return self.__observation_unit
+
+    @observation_unit.setter
+    def observation_unit(self, value: Any) -> None:
+        self.__observation_unit = value
+        self.__observation_unit_id = value.id
         
     @property
-    def scan_id(self) -> str:
-        return self.__scan_id
-
-    @scan_id.setter
-    def scan_id(self, value: str):
-        self.__scan_id = value
+    def scan(self) -> str:
+        return self.__scan
+    
+    @scan.setter
+    def scan(self, scan: IScan) -> None:
+        self.__scan = scan
+        self.__scan_id = scan.id
+        print("Analysis.scan: scan_id='%s'" % self.__scan_id)
         
     @property
     def state(self) -> str:
@@ -1447,10 +1611,10 @@ class Analysis(IAnalysis):
         self.__tasks = values
 
     def get_task_by_id(self, task_id: str) -> IFarm:
-        return self.find(task_id, self.tasks, "id")
+        return find(task_id, self.tasks, "id")
         
     def get_task_by_name(self, name: str) -> IFarm:
-        return self.find(name, self.tasks, "short_name")
+        return find(name, self.tasks, "short_name")
     
     def get_task(self, id_or_short_name: str) -> ITask:
         return (self.get_task_by_id(id_or_short_name)
@@ -1459,56 +1623,60 @@ class Analysis(IAnalysis):
     @property
     def results_file(self) -> IFile:
         return self.__results_file
-        
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
-        self.__parent_id = properties["parent"]
-        self.short_name = properties["short_name"]
-        self.name = properties["name"]
-        self.description = properties["description"]
-        self.scan_id = properties["scan_id"]
-        self.state = properties["state"]
-        self.observed_variables = factory.create_list("ObservedVariable",
-                                                      properties["observed_variables"])
-        self.tasks = factory.create_list("Task", properties["tasks"])
-        
-    def restore(self, db: Any) -> None:
-        self.__parent = db.lookup(self.__parent_id)
-        files = db.select_files(self.short_name, self.id, "results")
+
+    ##
+
+    def clone(self):
+        c = super().clone()
+        c.state = self.STATE_DEFINED
+        c.__observed_variables = [v.clone() for v in self.observed_variables]
+        c.__tasks = [v.clone() for v in self.tasks]
+        return c
+                    
+    def restore(self) -> None:
+        self.__observation_unit = self.database.lookup(self.__observation_unit_id)
+        self.__observation_unit.add_analysis(self)
+        print("Analysis.restore: scan_id='%s'" % self.__scan_id)
+        if self.__scan_id:
+            self.__scan = self.database.lookup(self.__scan_id)
+            self.__scan.add_analysis(self)
+        files = self.database.select_files(self.short_name, self.id, "results")
         if len(files) >= 1:
             self.__results_file = files[0]
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
+        self.__short_name = properties["short_name"]
+        self.__name = properties["name"]
+        self.__description = properties["description"]
+        self.__observation_unit_id = properties.get("observation_unit", "")
+        self.__scan_id = properties.get("scan", "")
+        print("Analysis.parse: scan_id='%s'" % self.__scan_id)
+        self.__state = properties["state"]
+        self.observed_variables = self.factory.create_list("ObservedVariable",
+                                                           properties["observed_variables"])
+        self.tasks = self.factory.create_list("Task", properties["tasks"])
 
     def serialize(self) -> dict:
+        print("Analysis.serialize: scan_id='%s'" % self.__scan_id)
         return { 'id': self.id,
-                 'parent': self.__parent_id,
                  'short_name': self.short_name,
                  'name': self.name,
                  'description': self.description,
-                 'scan_id': self.scan_id,
+                 'observation_unit': self.__observation_unit_id,
+                 'scan': self.__scan_id,
                  'state': self.state,
                  'observed_variables': self.observed_variables,
                  'tasks': self.tasks }
 
 
-class ExperimentalFactor(IExperimentalFactor):
-    def __init__(self):
+class ExperimentalFactor(BaseImpl, IExperimentalFactor):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__description = ""
         self.__values = ""
-
-    def clone(self):
-        return copy.deepcopy(self)
-    
-    def store(self, db: Any, recursive=False) -> None:
-        raise NotImplementedError()
-
-    @property
-    def id(self) -> str:
-        raise NotImplementedError()
-    
-    @id.setter
-    def id(self, value: str):
-        raise NotImplementedError()
    
     @property
     def short_name(self) -> str:
@@ -1534,7 +1702,10 @@ class ExperimentalFactor(IExperimentalFactor):
     def values(self, values: List[str]):
         self.__values = values
 
-    def parse(self, factory: IFactory, properties: dict):
+    ##
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.description = properties["description"]
         self.values = properties["values"]
@@ -1545,10 +1716,10 @@ class ExperimentalFactor(IExperimentalFactor):
                  'values': self.values }
 
 
-class Study(IStudy):
-    def __init__(self):
-        self.__factory = None
-        self.__id = ""
+class Study(BaseImpl, IStudy):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__investigation = None
         self.__investigation_id = ""
         self.__title = ""
@@ -1562,42 +1733,6 @@ class Study(IStudy):
         self.__experimental_factors = []
         self.__observation_units = []
         self.__scan_paths = []
-
-    def clone(self):
-        c = copy.copy(self)
-        c.id = new_id()
-        c.__people = [p.clone for p in self.people]
-        c.__cameras = [c.clone for c in self.cameras]
-        c.__scanning_devices = [s.clone for s in self.scanning_devices]
-        c.__scan_paths = [s.clone for s in self.scan_paths]
-        c.__files = []
-        c.__scans = []
-        c.__analyses = []
-        c.__observation_units = []
-        return c
-
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        if recursive:
-            self.store_id_list(db, self.scans, True)
-            self.store_id_list(db, self.analyses, True)
-
-    @property
-    def investigation(self) -> Any:
-        return self.__investigation
-
-    @investigation.setter
-    def investigation(self, value: Any):
-        self.__investigation_id = value.id
-        self.__investigation = value
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def title(self) -> str:
@@ -1614,6 +1749,15 @@ class Study(IStudy):
     @description.setter
     def description(self, value: str):
         self.__description = value
+
+    @property
+    def investigation(self) -> Any:
+        return self.__investigation
+
+    @investigation.setter
+    def investigation(self, value: Any):
+        self.__investigation_id = value.id
+        self.__investigation = value
 
     @property
     def people(self) -> List[IPerson]:
@@ -1687,35 +1831,47 @@ class Study(IStudy):
     def scan_paths(self, values: List[IScanPath]):
         self.__scan_paths = values
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__factory = factory
-        self.__id = properties["id"]
+    ##
+    
+    def clone(self):
+        c = super().clone()
+        c.__people = [p.clone for p in self.people]
+        c.__cameras = [c.clone for c in self.cameras]
+        c.__scanning_devices = [s.clone for s in self.scanning_devices]
+        c.__scan_paths = [s.clone for s in self.scan_paths]
+        c.__files = []
+        c.__scans = []
+        c.__analyses = []
+        c.__observation_units = []
+        return c
+            
+    def restore(self) -> None:
+        self.__investigation = self.database.lookup(self.__investigation_id)
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.__title = properties["title"]
         self.__description = properties["description"]
         self.__investigation_id = properties["investigation"]
-        self.people = factory.create_list("Person", properties["people"])
-        self.cameras = factory.create_list("Camera", properties["cameras"])
-        self.scanning_devices = factory.create_list("ScanningDevice",
-                                                    properties["scanning_devices"])
-        self.files = factory.create_list("File", properties["files"])
+        self.people = self.factory.create_list("Person", properties["people"])
+        self.cameras = self.factory.create_list("Camera", properties["cameras"])
+        self.scanning_devices = self.factory.create_list("ScanningDevice",
+                                                         properties["scanning_devices"])
+        self.files = self.factory.create_list("File", properties["files"])
         for f in self.files:
             f.parent = self
-        self.analyses = factory.create_list("Analysis", properties["analyses"])
+        self.analyses = self.factory.create_list("Analysis", properties["analyses"])
         for analysis in self.analyses:
             analysis.parent = self
             
-        self.experimental_factors = factory.create_list("ExperimentalFactor",
-                                                        properties["experimental_factors"])
-        self.observation_units = factory.create_list("ObservationUnit",
-                                                     properties["observation_units"])
-        self.scan_paths = factory.create_list("ScanPath",
-                                              properties["scan_paths"])
-        self.scans = factory.create_list("Scan", properties["scans"])
+        self.experimental_factors = self.factory.create_list("ExperimentalFactor",
+                                                             properties["experimental_factors"])
+        self.observation_units = self.factory.create_list("ObservationUnit",
+                                                          properties["observation_units"])
+        self.scan_paths = self.factory.create_list("ScanPath", properties["scan_paths"])
+        self.scans = self.factory.create_list("Scan", properties["scans"])
         for scan in self.scans:
             scan.parent = self
-            
-    def restore(self, db: Any) -> None:
-        self.__investigation = db.lookup(self.__investigation_id)
         
     def serialize(self) -> dict:
         return { 'id': self.id,
@@ -1733,11 +1889,11 @@ class Study(IStudy):
                  'scan_paths': self.scan_paths }
 
     def validate_person_name(self, value: str):
-        if not self.find(value, self.people, "short_name"):
+        if not find(value, self.people, "short_name"):
             raise ValueError("The person %s isn't listed in the study, yet" % value)
         
     def validate_observation_unit_id(self, value: str):
-        if not self.find(value, self.observation_units, "id"):
+        if not find(value, self.observation_units, "id"):
             raise ValueError("The observationd unit %s was not found in the study"
                              % value)
 
@@ -1757,13 +1913,12 @@ class Study(IStudy):
     def validate_camera_name(self, value: str) -> str:
         r = value
         if not value:
-            print("Cameras %d" % len(self.cameras))
             if len(self.cameras) == 1:
                 r = self.cameras[0].short_name
             else:
                 raise ValueError("Missing the name of the camera")
         else:
-            if not self.find(value, self.cameras, "short_name"):
+            if not find(value, self.cameras, "short_name"):
                 raise ValueError("The camera %s is not used in the study" % value)
         return r
 
@@ -1775,7 +1930,7 @@ class Study(IStudy):
             else:
                 raise ValueError("Missing the name of the scanning device")
         else:
-            if not self.find(value, self.scanning_devices, "short_name"):
+            if not find(value, self.scanning_devices, "short_name"):
                 raise ValueError("The scanning device %s is not used in the study"
                                  % value)
         return r
@@ -1788,7 +1943,7 @@ class Study(IStudy):
             else:
                 raise ValueError("Missing the name of the scan path")
         else:
-            if not self.find(value, self.scan_paths, "short_name"):
+            if not find(value, self.scan_paths, "short_name"):
                 raise ValueError("The scan path %s is not used in the study"
                                  % value)
         return r
@@ -1829,7 +1984,7 @@ class Study(IStudy):
         observation_unit_id = kwargs["observation_unit_id"]
         self.validate_observation_unit_id(observation_unit_id)
 
-        observation_unit = self.find(observation_unit_id, self.observation_units, "id")
+        observation_unit = find(observation_unit_id, self.observation_units, "id")
 
         scan_path_name = None
         if "scan_path_name" in kwargs:
@@ -1841,17 +1996,17 @@ class Study(IStudy):
             factor_values = kwargs["factor_values"]
         self.validate_factor_values(factor_values, observation_unit)
         
-        scan = self.__factory.create("Scan",
-                                     {"id": new_id(),
-                                      "date": current_date().isoformat(),
-                                      "person_names": person_names,
-                                      "camera_name": camera_name,
-                                      "scanning_device_name": scanning_device_name,
-                                      "observation_unit_id": observation_unit_id,
-                                      "scan_path_name": scan_path_name,
-                                      "factor_values": factor_values,
-                                      "camera_poses": []
-                                     })
+        scan = self.factory.create("Scan", {
+            "date": current_date().isoformat(),
+            "person_names": person_names,
+            "camera_name": camera_name,
+            "scanning_device_name": scanning_device_name,
+            "observation_unit_id": observation_unit_id,
+            "scan_path_name": scan_path_name,
+            "factor_values": factor_values,
+            "camera_poses": []
+        })
+        
         self.add_scan(scan)
         scan.parent = self
         return scan
@@ -1865,35 +2020,16 @@ class Study(IStudy):
 
 
         
-class Investigation(IInvestigation):
-    def __init__(self):
-        self.__id = ""
+class Investigation(BaseImpl, IInvestigation):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__title = ""
         self.__description = ""
         self.__license = ""
         self.__people = []
         self.__studies = []
-
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        if recursive:
-            self.store_id_list(db, self.studies, True)
-
-    def clone(self):
-        c = copy.copy(self)
-        c.__id = new_id()
-        c.__publications = []
-        c.__people = []
-        return c
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
         
     @property
     def short_name(self) -> str:
@@ -1943,8 +2079,6 @@ class Investigation(IInvestigation):
         self.__people = value
 
     def add_person(self, person: IPerson):
-        if not person:
-            raise Error() 
         self.people.append(person)
 
     @property
@@ -1959,14 +2093,22 @@ class Investigation(IInvestigation):
         study.parent = self
         self.studies.append(study)
 
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    ## 
+
+    def clone(self):
+        c = super().clone()
+        c.__publications = []
+        c.__people = []
+        return c
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.title = properties["title"]
         self.description = properties["description"]
         self.license = properties["license"]
-        self.people = factory.create_list("Person", properties["people"])
-        self.studies = factory.create_list("Study", properties["studies"])
+        self.people = self.factory.create_list("Person", properties["people"])
+        self.studies = self.factory.create_list("Study", properties["studies"])
         for study in self.studies:
             study.parent = self
         
@@ -1979,52 +2121,16 @@ class Investigation(IInvestigation):
                  'people': self.people,
                  'studies': self.studies }
 
-
     
-class Zone(IZone):
-    def __init__(self):
-        self.__factory = None
+class Zone(BaseImpl, IZone):
+    
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__id = ""
         self.__farm = None
         self.__farm_id = ""
         self.__short_name = ""
-        self.__scan_paths = []
-        self.__files = []
-        self.__scan_ids = []
-        self.__scans = []
-        self.__analysis_ids = []
-        self.__analyses = []
-        self.__datastream_ids = []
-        self.__datastreams = []
-
-    def clone(self):
-        c = copy.copy(self)
-        c.id = new_id()
-        c.__farm = None
-        c.__farm_id = ""
-        c.__scan_paths = [p.clone for p in self.scan_paths]
-        c.__files = []
-        c.__scan_ids = []
-        c.__scans = []
-        c.__analysis_ids = []
-        c.__analyses = []
-        c.__datastreams_ids = []
-        c.__datastreams = []
-        return c
-
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        if recursive:
-            self.store_list(db, self.__scans, True)
-            self.store_list(db, self.__analyses, True)
-        
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
+        self.__observation_units = []
     
     @property
     def farm(self) -> Any:
@@ -2042,197 +2148,62 @@ class Zone(IZone):
     @short_name.setter
     def short_name(self, value: str):
         self.__short_name = value
-
-    @property
-    def cameras(self) -> List[ICamera]:
-        if self.parent != None:
-            return self.parent.cameras
-        else:
-            return []
-
-    @property
-    def scanning_devices(self) -> List[ScanningDevice]:
-        if self.parent != None:
-            return self.parent.scanning_devices
-        else:
-            return []
-
-    @property
-    def scan_paths(self) -> List[IScanPath]:
-        return self.__scan_paths
-
-    @scan_paths.setter
-    def scan_paths(self, values: List[IScanPath]):
-        self.__scan_paths = values
-
-    def add_scan_path(self, scan_path: IScanPath):
-        if None == self.find(scan_path.short_name,
-                             self.scan_paths,
-                             "short_name"):
-            self.__scan_paths.append(scan_path)
-
-    @property
-    def files(self) -> List[IFile]:
-        return self.__files
-
-    @files.setter
-    def files(self, values: List[ICamera]):
-        self.__files = values
-
-    @property
-    def scans(self) -> List[IScan]:
-        return self.__scans
-    
-    @property
-    def analyses(self) -> List[IAnalysis]:
-        return self.__analyses
-
-    def add_analysis(self, analysis: IAnalysis, db):
-        analysis.parent = self
-        self.__analyses.append(analysis)
-        self.__analysis_ids.append(analysis.id)
-        db.store(analysis, True)
-        db.store(self, False)
-    
-    @property
-    def datastreams(self) -> List[IDataStream]:
-        return self.__datastreams
-
-    def add_datastream(self, datastream: IDataStream, db):
-        self.__datastreams.append(datastream)
-        self.__datastream_ids.append(datastream.id)
-        db.store(self, False)
         
-    def parse(self, factory: IFactory, properties: dict):
-        self.__factory = factory
-        self.__id = properties["id"]
+    @property
+    def observation_units(self) -> List[IObservationUnit]:
+        return self.__observation_units
+
+    def add_observation_unit(self, obj: IObservationUnit):
+        if find(obj.id, self.observation_units, "id") == None:
+            self.__observation_units.append(obj)
+
+    def get_observation_unit(self, oid: str, otype: str) -> IObservationUnit:
+        r = None
+        for obj in self.observation_units:
+            if ((not oid or obj.id == oid)
+                and (not otype or obj.type == otype)):
+                r = obj
+                break        
+        return r
+
+    ##
+    
+    def restore(self) -> None:
+        self.__farm = self.database.lookup(self.__farm_id)
+        self.__farm.add_zone(self)
+
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.__farm_id = properties["farm"]
         self.__short_name = properties["short_name"]
-        self.scan_paths = factory.create_list("ScanPath", properties["scan_paths"])
-        self.files = factory.create_list("File", properties["files"])
-        for f in self.files:
-            f.parent = self
-        self.__analysis_ids = properties["analyses"]
-        self.__scan_ids = properties["scans"]
-        self.__datastream_ids = properties["datastreams"]
-        
-    def restore(self, db: Any) -> None:
-        self.__farm = db.lookup(self.__farm_id)
-        self.__analyses = self.lookup_id_list(db, self.__analysis_ids)
-        self.__scans = self.lookup_id_list(db, self.__scan_ids)
-        self.__datastreams = self.lookup_id_list(db, self.__datastream_ids)
 
     def serialize(self) -> dict:
         return { 'id': self.id,
                  'farm': self.__farm_id,
-                 'short_name': self.short_name,
-                 'scan_paths': self.scan_paths,
-                 'files': self.files,
-                 'scans': self.__scan_ids,
-                 'analyses': self.__analysis_ids,
-                 'datastreams': self.__datastream_ids }
-                
-    def validate_from_list(self, msg: str, value: str, array: str) -> str:
-        r = value
-        if not value and len(array) == 1:
-            r = array[0].short_name
-        elif value:
-            r = self.find(value, array, "short_name")
-        if not r:
-            raise ValueError("Couldn't find %s" % msg)
-        return r
+                 'short_name': self.short_name }
 
+        
+
+class Farm(BaseImpl, IFarm):
     
-    def new_scan(self, db, **kwargs) -> IScan:
-            
-        camera_name = None
-        valid_cameras = kwargs["valid_cameras"]
-        if "camera_name" in kwargs:
-            camera_name = kwargs["camera_name"]
-        camera_name = self.validate_from_list("camera",
-                                              camera_name,
-                                              valid_cameras)
-
-        scanning_device_name = None
-        valid_scanning_devices = kwargs["valid_scanning_devices"]
-        if "scanning_device_name" in kwargs:
-            scanning_device_name = kwargs["scanning_device_name"]
-        scanning_device_name = self.validate_from_list("scanning device",
-                                                       scanning_device_name,
-                                                       valid_scanning_devices)
-
-        if "scan_path" in kwargs:
-            scan_path = kwargs["scan_path"]
-        else:
-            raise ValueError("Missing scan path")
-        
-        self.add_scan_path(scan_path)
-        
-        scan = self.__factory.create("Scan",
-                                     {"id": new_id(),
-                                      "parent": self.id,
-                                      "date": current_date().isoformat(),
-                                      "person_names": [],
-                                      "camera_name": camera_name,
-                                      "scanning_device_name": scanning_device_name,
-                                      "observation_unit_id": "",
-                                      "scan_path_name": scan_path.short_name,
-                                      "factor_values": {},
-                                      "camera_poses": []
-                                     })
-        scan.parent = self
-        self.__scans.append(scan)
-        self.__scan_ids.append(scan.id)
-        db.store(scan, True)    
-        db.store(self, False)
-        return scan
-
-    def clone_scan(self, scan: IScan) -> IScan:
-        newscan = scan.clone()
-        newscan.id = new_id()
-        newscan.date = current_date()
-        self.add_scan(newscan)
-        return newscan
-
-
-        
-class Farm(IFarm):
-    def __init__(self):
-        self.__id = ""
+    def __init__(self, factory, database, classname):
+        BaseImpl.__init__(self, factory, database, classname)
         self.__short_name = ""
         self.__description = ""
+        self.__address = ""
+        self.__country = ""
+        self.__photo = None
+        self.__photo_id = ""
+        self.__location = [0, 0]
         self.__license = ""
         self.__people = []
         self.__person_ids = []
         self.__cameras = []
         self.__scanning_devices = []
+        self.__scan_paths = []
         self.__zones = []
-        self.__zone_ids = []
+        self.__observation_units = []
 
-    def clone(self):
-        c = copy.copy(self)
-        c.__id = new_id()
-        c.__people = []
-        c.__person_ids = []
-        c.__scanning_devices = [s.clone for s in self.scanning_devices]
-        c.__scan_paths = [s.clone for s in self.scan_paths]
-        c.__zones = []
-        c.__zone_ids = []
-        return c
-
-    def store(self, db: Any, recursive=False) -> None:
-        super().store_default(db)
-        if recursive:
-            self.store_id_list(db, self.__zone_ids, True)
-                
-    @property
-    def id(self) -> str:
-        return self.__id
-        
-    @id.setter
-    def id(self, value: str):
-        self.__id = value
-        
     @property
     def short_name(self) -> str:
         return self.__short_name
@@ -2258,6 +2229,35 @@ class Farm(IFarm):
         self.__description = value
 
     @property
+    def address(self) -> str:
+        return self.__address
+
+    @address.setter
+    def address(self, value: str):
+        self.__address = value
+
+    @property
+    def country(self) -> str:
+        return self.__country
+
+    @country.setter
+    def country(self, value: str):
+        self.__country = value
+
+    @property
+    def photo(self) -> IFile:
+        return self.__photo
+
+    @photo.setter
+    def photo(self, ifile: IFile) -> None:
+        self.__photo = ifile
+        self.__photo_id = ifile.id
+
+    @property
+    def location(self) -> List[float]:
+        return self.__location
+
+    @property
     def license(self) -> str:
         return self.__license
 
@@ -2269,12 +2269,14 @@ class Farm(IFarm):
     def people(self) -> List[IPerson]:
         return self.__people
     
-    def add_person(self, person: IPerson, db):
+    def add_person(self, person: IPerson):
         self.__people.append(person)
         self.__person_ids.append(person.id)
-        db.store(person, True)
-        db.store(self, False)
 
+    def get_person(self, id_or_name: str):
+        return (find(id_or_name, self.people, "id")
+                or find(id_or_name, self.people, "short_name"))
+    
     @property
     def cameras(self) -> List[ICamera]:
         return self.__cameras
@@ -2283,68 +2285,122 @@ class Farm(IFarm):
     def cameras(self, values: List[ICamera]):
         self.__cameras = values
 
+    def add_camera(self, camera: ICamera):
+        if find(camera.id, self.cameras, "id") == None:
+            self.cameras.append(camera)
+            camera.owner = self
+
+    def get_camera(self, id_or_name: str):
+        return (find(id_or_name, self.cameras, "id")
+                or find(id_or_name, self.cameras, "short_name"))
+            
     @property
     def scanning_devices(self) -> List[ScanningDevice]:
         return self.__scanning_devices
+    
+    def add_scanning_device(self, device: IScanningDevice):
+        if find(device.id, self.scanning_devices, "id") == None:
+            self.scanning_devices.append(device)
+            device.owner = self
 
-    @scanning_devices.setter
-    def scanning_devices(self, values: List[ICamera]):
-        self.__scanning_devices = values
+    def get_scanning_device(self, id_or_name: str):
+        return (find(id_or_name, self.scanning_devices, "id")
+                or find(id_or_name, self.scanning_devices, "short_name"))
+            
+    @property
+    def scan_paths(self) -> List[IScanPath]:
+        return self.__scan_paths
+    
+    def add_scan_path(self, value: IScanPath):
+        self.scan_paths.append(value)
+        
+    def get_scan_path(self, id_or_name: str):
+        return (find(id_or_name, self.scanning_devices, "id")
+                or find(id_or_name, self.scan_paths, "short_name"))
 
     @property
     def zones(self) -> List[str]:
         return self.__zones
 
-    def add_zone(self, zone: IZone, db):
-        self.__zones.append(zone)
-        self.__zone_ids.append(zone.id)
-        zone.farm = self
-        db.store(zone, True)    
-        db.store(self, False)
+    def add_zone(self, zone: IZone):
+        if find(zone.id, self.zones, "id") == None:
+            self.zones.append(zone)
+            zone.farm = self
+        
+    @property
+    def observation_units(self) -> List[IObservationUnit]:
+        return self.__observation_units
 
-    def get_zone(self, id_or_name: str):
+    def add_observation_unit(self, obj: IObservationUnit):
+        if find(obj.id, self.observation_units, "id") == None:
+            obj.context = self
+            self.__observation_units.append(obj)
+
+    def get_observation_unit(self, oid: str, otype: str = "") -> IObservationUnit:
         r = None
-        for zone in self.zones:
-            if (zone.id == id_or_name
-                or zone.short_name == id_or_name):
-                r = zone
-                break
+        for obj in self.observation_units:
+            if ((not oid or obj.id == oid or obj.short_name == oid)
+                and (not otype or obj.type == otype)):
+                r = obj
+                break        
         return r
         
-    def parse(self, factory: IFactory, properties: dict):
-        self.__id = properties["id"]
+    ##
+
+    def clone(self):
+        c = super().clone()
+        c.__photo = None
+        c.__photo_id = ""
+        c.__people = []
+        c.__person_ids = []
+        c.__cameras = [s.clone for s in self.__cameras]
+        c.__scanning_devices = [s.clone for s in self.__scanning_devices]
+        c.__scan_paths = [s.clone for s in self.scan_paths]
+        c.__zones = []
+        return c
+
+    def restore(self) -> None:
+        self.__people = lookup_id_list(self.database, self.__person_ids)
+        if self.__photo_id:
+            self.__photo = self.database.get_file(self.__photo_id)
+    
+    def parse(self, properties: dict):
+        super().parse(properties)
         self.short_name = properties["short_name"]
         self.name = properties["name"]
         self.description = properties["description"]
+        self.address = properties["address"]
+        self.country = properties["country"]
         self.license = properties["license"]
-        self.__person_ids = properties["people"]
-        self.cameras = factory.create_list("Camera", properties["cameras"])
-        for camera in self.cameras:
-            print("%s : %s" % (self.short_name, camera.short_name))
-        self.scanning_devices = factory.create_list("ScanningDevice",
-                                                    properties["scanning_devices"])
-        self.__zone_ids = properties["zones"]
 
-        
-    def restore(self, db: Any) -> None:
-        self.__people = self.lookup_id_list(db, self.__person_ids)
-        self.__zones = self.lookup_id_list(db, self.__zone_ids)
+        self.__photo_id = properties.get("photo", "")
+        self.__location = properties.get("location", [0,0])
+
+        if "people" in properties:
+            self.__person_ids = properties["people"]
+            
+        if "scan_paths" in properties:
+            self.__scan_paths = self.factory.create_list("ScanPath",
+                                                         properties["scan_paths"])
         
     def serialize(self) -> dict:
         return { 'id': self.id,
                  'short_name': self.short_name,
                  'name': self.name,
                  'description': self.description,
+                 'address': self.address,
+                 'country': self.country,
+                 'photo': self.__photo_id,
+                 'location': self.location,
                  'license': self.license,
                  'people': self.__person_ids,
-                 'zones': self.__zone_ids,
-                 'cameras': self.cameras,
-                 'scanning_devices': self.scanning_devices }
+                 'scan_paths': self.scan_paths,
+        }
 
 
 class DefaultFactory(IFactory):
-    def __init__(self):
-        pass
+    def __init__(self, database: IDatabase):
+        self.__database = database
     
     def create(self, classname: str, properties: dict) -> Any:
         switcher = {
@@ -2370,11 +2426,14 @@ class DefaultFactory(IFactory):
             "ScanPath": ScanPath,
             "Unit": Unit,
             "Observable": Observable,
-            "DataStream": DataStream
+            "DataStream": DataStream,
+            "Note": Note
         }
         constructor = switcher.get(classname)
-        obj = constructor()
-        obj.parse(self, properties)
+        if not constructor:
+            raise ValueError("Can't find constructor for %s" % classname)
+        obj = constructor(self, self.__database, classname)
+        obj.parse(properties)
         return obj
     
     def create_list(self, classname: str, properties: List[dict]) -> List[Any]:

@@ -1,0 +1,29 @@
+[
+    {
+        "id": 1,
+        "sensor_id": "xxx",
+        "sensor_type": "http://purl.oclc.org/NET/ssnx/meteo/aws#TemperatureSensor",
+        "sensor_name": "Temperature",
+        "unit_id": "http://purl.obolibrary.org/obo/UO_0000027",
+        "unit_name": "Degrees Celsius",
+        "description": "Temperature"
+    },
+    {
+        "id": 2,
+        "sensor_id": "xxx",
+        "sensor_type": "http://purl.oclc.org/NET/ssnx/meteo/aws#HumiditySensor",
+        "sensor_name": "Soil humidity",
+        "unit_id": "http://purl.obolibrary.org/obo/UO_0000187",
+        "unit_name": "%",
+        "description": "Soil humidity"
+    },
+    {
+        "id": 3,
+        "sensor_id": "xxx",
+        "sensor_type": "http://purl.oclc.org/NET/ssnx/meteo/aws#RadiationSensor",
+        "sensor_name": "Sunlight",
+        "unit_id": "xxx",
+        "unit_name": "micromole/m2/s",
+        "description": "Sunlight"
+    }
+]

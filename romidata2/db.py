@@ -50,7 +50,7 @@ class Database(IDatabase):
         self.__objects = {}        
         self.__files = {}        
         if factory == None:
-            self.__factory = DefaultFactory()
+            self.__factory = DefaultFactory(self)
         else:
             self.__factory = factory
         self.__makedirs("objects")
@@ -59,7 +59,6 @@ class Database(IDatabase):
         self.__load_files()
         self.__load_objects()
 
-        
     def __del__(self):
         if self.__basefs:
             print(self.__basefs)
@@ -68,6 +67,7 @@ class Database(IDatabase):
 
     def __load_object(self, relpath: str) -> Any:
         obj = None
+        print("Load %s" % relpath)
         if self.__basefs.exists(relpath):
             with self.__basefs.open(relpath) as json_file:
                 data = json.load(json_file)
@@ -77,18 +77,21 @@ class Database(IDatabase):
         return obj
     
     def __load_objects(self) -> None:
-        for filename in self.__basefs.listdir('objects'):
-            if filename.endswith(".json"):
-                self.__load_object(fs.path.join("objects", filename))
+        for obj_type in self.__basefs.listdir('objects'):
+            for filename in self.__basefs.listdir('objects/%s' % obj_type):
+                if filename.endswith(".json"):
+                    self.__load_object(fs.path.join("objects", obj_type, filename))
         for obj in self.__objects.values():
-            obj.restore(self)
+            obj.restore()
                 
     def __load_id(self, obj_id: str) -> None:
         relpath = fs.path.join("objects", "%s.json" % obj_id)
         return self.__load_object(relpath)
 
-    def store_object(self, obj_id: str, classname: str, obj: Any) -> None:
-        relpath = fs.path.join("objects", "%s.json" % obj_id)
+    def __store_object(self, obj_id: str, classname: str, obj: Any) -> None:
+        self.__makedirs("objects", classname)
+        relpath = fs.path.join("objects", classname, "%s.json" % obj_id)
+        print("Store %s" % relpath)
         with self.__basefs.open(relpath, 'w') as f:
             data = {
                 "id": obj_id,
@@ -99,6 +102,10 @@ class Database(IDatabase):
     
     def __insert(self, obj: BaseClass) -> None:
         self.__objects[obj.id] = obj
+            
+    def store(self, obj: BaseClass) -> None:
+        self.__insert(obj)
+        self.__store_object(obj.id, obj.classname, obj)
 
     def lookup(self, obj_id: str) -> BaseClass:
         r = self.__objects.get(obj_id)
@@ -114,10 +121,6 @@ class Database(IDatabase):
                      or getattr(obj, prop) == value)):
                 r.append(obj)
         return r
-            
-    def store(self, obj: Any, recursive=True) -> None:
-        self.__insert(obj)
-        obj.store(self, recursive)
         
     def __insert_file(self, ifile: IFile) -> None:
         self.__files[ifile.id] = ifile        
@@ -139,10 +142,10 @@ class Database(IDatabase):
             json.dump(ifile, f, indent=4, cls=JsonExporter)
         self.__insert_file(ifile)
 
-    def new_file(self, source_name: str, source_id: str,
+    def new_file(self, owner_id, source_name: str, source_id: str,
                  short_name: str, relpath: str, mimetype: str) -> IFile:
         f = self.__factory.create("File", {
-            "id": new_id(),
+            "owner": owner_id,
             "source_name": source_name,
             "source_id": source_id,
             "short_name": short_name,
@@ -252,23 +255,38 @@ class FarmDatabase(Database):
     def get_datastream(self, stream_id: str):
         pass
     
-    def scan_filepath(self, farm, zone, scan, file_short_name, ext):
-        return "%s/%s/scans/%s/%s.%s" % (farm.short_name,
-                                         zone.short_name,
-                                         scan.date.strftime("%Y%m%d-%H%M%S"),
-                                         file_short_name,
-                                         ext)
+    def farm_filepath(self, farm, file_short_name, ext):
+        return "%s/files/%s.%s" % (farm.short_name,
+                                   file_short_name,
+                                   ext)
 
-    def analysis_filepath(self, farm, zone, analysis, file_short_name, ext):
-        return "%s/%s/%s/%s/%s.%s" % (farm.short_name,
-                                      zone.short_name,
-                                      analysis.short_name,
-                                      analysis.id,
-                                      file_short_name,
-                                      ext)
+    def scan_filepath(self, scan, file_short_name, ext):
+        observation_unit = scan.observation_unit
+        farm = observation_unit.context
+        return "%s/%s-%s/scans/%s-%s/%s.%s" % (farm.short_name,
+                                               observation_unit.type,
+                                               observation_unit.id,
+                                               scan.date.strftime("%Y%m%d-%H%M%S"),
+                                               scan.id,
+                                               file_short_name,
+                                               ext)
 
-    def datastream_filepath(self, farm, zone, datastream_id):
-        return "%s/%s/datastreams/%s.json" % (farm.short_name,
-                                              zone.short_name,
-                                              datastream_id)
+    def analysis_filepath(self, analysis, file_short_name, ext):
+        observation_unit = analysis.observation_unit
+        farm = observation_unit.context
+        return "%s/%s-%s/analyses/%s/%s/%s.%s" % (farm.short_name,
+                                                  observation_unit.type,
+                                                  observation_unit.id,
+                                                  analysis.short_name,
+                                                  analysis.id,
+                                                  file_short_name,
+                                                  ext)
+
+    def datastream_filepath(self, datastream):
+        observation_unit = datastream.observation_unit
+        farm = observation_unit.context
+        return "%s/%s-%s/datastreams/%s.json" % (farm.short_name,
+                                                 observation_unit.type,
+                                                 observation_unit.id,
+                                                 datastream.id)
 

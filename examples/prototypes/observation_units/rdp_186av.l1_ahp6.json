@@ -1,6 +1,8 @@
 {
     "id": "RDP:186AV.L1:plantID:date:ahp6",
     "type": "individual plant",
+    "short_name": "rdp_186av.l1_ahp6",
+    "context": "",
     "spatial_distribution": "NA",
     "factor_values": {"genotype_ahp6_mutation": "ahp6"},
     "samples": [

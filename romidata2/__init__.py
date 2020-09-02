@@ -11,7 +11,7 @@ __email__ = "peter@hanappe.com"
 __status__ = "Prototype"
 __version__ = "0.0.1"
 
-from romidata2.datamodel import IFactory, IPrototypes, BaseClass, IPerson, IFile, IParameters, ISoftwareModule, ICamera, IScanningDevice, IScanPath, ISample, IObservationUnit, IBiologicalMaterial, IPose, IBoundingBox, IScan, ITask, IObservedVariable, IAnalysis, IExperimentalFactor, StudyAndZoneBase, IStudy, IZone, IFarm, IInvestigation, IDatabase
+from romidata2.datamodel import IFactory, IPrototypes, BaseClass, IPerson, IFile, IParameters, ISoftwareModule, ICamera, IScanningDevice, IScanPath, ISample, IObservationUnit, IBiologicalMaterial, IPose, IBoundingBox, IScan, ITask, IObservedVariable, IAnalysis, IExperimentalFactor, IStudy, IZone, IFarm, IInvestigation, IDatabase
 
 from romidata2.impl import new_id, current_date, DefaultFactory, Person, File, Parameters, SoftwareModule, Camera, ScanningDevice, ScanPath, Sample, ObservationUnit, BiologicalMaterial, Pose, BoundingBox, Scan, Task, ObservedVariable, Analysis, ExperimentalFactor, Study, Zone, Farm, Investigation
 
