@@ -56,7 +56,7 @@ class WebCache():
     db_type : str
         One of "farms" or "investigations".
     path: str
-        ``The path of the local cache directtory.
+        ``The path of the local cache directory.
 
     """
     def __init__(self, db: IDatabase, db_type: str, path: str):
@@ -65,26 +65,25 @@ class WebCache():
         self.__path = path
         os.makedirs(self.__path, exist_ok=True)
 
-    def __hash(self, resource_type, file_id, size):
+    def __hash(self, components):
         """Computes a SHA1 hash.
     
         Parameters
         ----------
-        resource_type: str
-            One of "image", ...
-        file_id: str
-            The ID of the file in the fileset
-        size: str
-            The requested size ('orig', 'large', or 'thumb')
+        components: List[str]
+            The list of strings that define the resource. It should
+            include the resource type ('image', ...), the file ID, 
+            the size, and the additional features that uniquely defines
+            the resource. 
 
         """
         m = hashlib.sha1()
-        key = "%s|%s|%s" % (resource_type, file_id, size)
+        key = '|'.join(components)
         m.update(key.encode('utf-8'))
         return m.hexdigest()
 
     # Image
-    def __image_hash(self, file_id, size):
+    def __image_hash(self, file_id, size, orientation, direction):
         """Compute a hash key for the image.
     
         Parameters
@@ -93,9 +92,13 @@ class WebCache():
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
+        orientation: str
+            The requested orientation ('orig', 'horizontal', or 'vertical')
+        direction: str
+            The direction of the rotation ('cw', 'ccw')
 
         """
-        return self.__hash("image", file_id, size)
+        return self.__hash(["image", file_id, size, orientation, direction])
 
     def __image_resize(self, img, max_size):
         """Resize an image to the cache.
@@ -111,7 +114,7 @@ class WebCache():
         img.thumbnail((max_size, max_size))
         return img
 
-    def __cache_image(self, file_id, size):
+    def __cache_image(self, file_id, size, orientation, direction):
         """Add an image to the cache.
     
         Parameters
@@ -120,18 +123,30 @@ class WebCache():
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
+        orientation: str
+            The requested orientation ('orig', 'horizontal', or 'vertical')
+        direction: str
+            The direction of the rotation ('cw', 'ccw')
 
         """
         ifile = self.__db.get_file(file_id)
         image = self.__db.file_read_bytes(ifile)
-        dst = os.path.join(self.__path, self.__image_hash(file_id, size))
+        dst = os.path.join(self.__path, self.__image_hash(file_id, size, orientation, direction))
         
         resolutions = { "large": 1500, "thumb": 150 }
         maxsize = resolutions.get(size) 
         
         image = Image.open(BytesIO(image))
         image.load()
+        w, h = image.size
+        image_orientation = 'horizontal' if w > h else 'vertical'
+            
         image = self.__image_resize(image, maxsize)
+
+        if orientation != 'orig' and orientation != image_orientation:
+            angle = -90 if direction == 'cw' else 90
+            image = image.rotate(angle, expand=True)
+            
         if image.mode != 'RGB':
             image = image.convert('RGB')
         image.save(dst, "JPEG", quality=84)
@@ -141,7 +156,7 @@ class WebCache():
         return dst
 
 
-    def __cached_image_data(self, file_id, size):
+    def __cached_image_data(self, file_id, size, orientation, direction):
         """Return cached image data.
         
         Returns the data of a cached image. If the image is not yet
@@ -153,19 +168,23 @@ class WebCache():
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
+        orientation: str
+            The requested orientation ('orig', 'horizontal', or 'vertical')
+        direction: str
+            The direction of the rotation ('cw', 'ccw')
 
         """
         data = None
-        path = os.path.join(self.__path, self.__image_hash(file_id, size))
+        path = os.path.join(self.__path, self.__image_hash(file_id, size, orientation, direction))
         if not os.path.isfile(path):
-            self.__cache_image(file_id, size)
+            self.__cache_image(file_id, size, orientation, direction)
         with open(path, mode="rb") as f:
             data = f.read()
             f.close()
         return data
 
     
-    def image_data(self, file_id, size):
+    def image_data(self, file_id, size, orientation, direction):
         """Return image data.
         
         Returns the data of a given image file in the database.
@@ -176,15 +195,24 @@ class WebCache():
             The ID of the file in the fileset
         size: str
             The requested size ('orig', 'large', or 'thumb')
+        orientation: str
+            The requested orientation ('orig', 'horizontal', or 'vertical')
+        direction: str
+            The direction of the rotation ('cw', 'ccw')
 
         """
-        if size == "orig":
+        if not size in ['orig', 'thumb', 'large']:
+            raise ValueError("Invalid size: %s" % size)
+        if not orientation in ['orig', 'horizontal', 'vertical']:
+            raise ValueError("Invalid orientation: %s" % orientation)
+        if not direction in ['cw', 'ccw']:
+            raise ValueError("Invalid direction: %s" % direction)
+        
+        if size == "orig" and orientation == 'orig':
             print("Using original file")
             ifile = self.__db.get_file(file_id)
             return self.__db.file_read_bytes(ifile), ifile.mimetype
-        elif size == "large" or size == "thumb":
-            print("Using cached file")
-            return self.__cached_image_data(file_id, size), "image/jpg"
         else:
-            raise ValueError("Unknow size specification: %s" % size)
+            print("Using cached file")
+            return self.__cached_image_data(file_id, size, orientation, direction), "image/jpg"
 

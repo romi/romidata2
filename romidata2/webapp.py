@@ -64,6 +64,8 @@ class FarmInfo(RomiResource):
             'description': farm.description,
             'address': farm.address,
             'country': farm.country,
+            'location': farm.location,
+            'photo': farm.photo.id if farm.photo else "",
             'license': farm.license,
             'people': [ p.serialize() for p in farm.people ],
             'crops': [{"id": obj.id, "short_name": obj.short_name}
@@ -270,7 +272,7 @@ class DataStreamValues(RomiResource):
         return datastream.select(self.db, start_date, end_date)
 
     
-class ZoneImage(RomiResource):
+class RomiImage(RomiResource):
     """Class representing a image HTTP request, subclass of
     flask_restful's Resource class.
     """
@@ -284,7 +286,11 @@ class ZoneImage(RomiResource):
         size = request.args.get('size', default='thumb', type=str)
         if not size in ['orig', 'thumb', 'large']:
             size = 'thumb'
-        data, mimetype = self.cache.image_data(image_id, size)
+        orientation = request.args.get('orientation', default='default', type=str)
+        if not orientation in ['orig', 'horizontal', 'vertical']:
+            orientation = 'orig'
+        direction = request.args.get('direction', default='cw', type=str)
+        data, mimetype = self.cache.image_data(image_id, size, orientation, direction)
         response = make_response(data)
         response.headers['Content-Type'] = mimetype
         return response
@@ -349,7 +355,7 @@ class FarmWebApp(Flask):
                                 '/datastreams/<string:datastream_id>/values',
                                 resource_class_kwargs={'app': self})
 
-        self.__api.add_resource(ZoneImage,
+        self.__api.add_resource(RomiImage,
                                 '/images/<string:image_id>',
                                 resource_class_kwargs={'app': self})
                 

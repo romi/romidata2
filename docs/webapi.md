@@ -399,9 +399,6 @@ Field | Description
 
 # Images
 
-All images of the scans and all images produced by various analyses
-are stored per zone. To uniquely identify an image, you need the
-farm ID, the zone ID, and the image ID.
 
 ## Get an Image
 
@@ -416,7 +413,7 @@ curl "http://example.com/images/95vaybgy/jxjecsik/3yhukq53?size=thumb"
 
 `GET http://example.com/images/<ImageID>`
 
-`GET http://example.com/images/<ImageID>?size=<SizeLabel>`
+`GET http://example.com/images/<ImageID>?size=<SizeLabel>&orientation=<OrientationLabel>&direction=<DirectionLabel>`
 
 ### URL Parameters
 
@@ -429,3 +426,5 @@ ImageID | The ID of the image
 Parameter | Default | Description
 --------- | ------- | -----------
 size | thumb | Defines the size of the image to be returned. The following options are currently available: 'thumb' (max. 150x150), 'large' (max. 1500x1500), and 'orig' (original size).
+orientation | orig | Defines the orientation of the image to be returned. The following options are currently available: 'orig' (no changes), 'horizontal' (width > height), and 'vertical' (height > width).
+direction | cw | Defines the direction to rotate the image, if needed. The following options are currently available: 'cw' (clock-wise) and 'ccw' (counter-clock-wise)
