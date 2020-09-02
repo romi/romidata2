@@ -233,7 +233,7 @@ class NoteInfo(RomiResource):
         if note.classname != "Note":
             abort(404)
             
-        observation_unit = datastream.observation_unit
+        observation_unit = note.observation_unit
         farm = observation_unit.context
             
         return {
