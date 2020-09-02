@@ -229,7 +229,7 @@ class NoteInfo(RomiResource):
         super().__init__(app)
 
     def get(self, ID: str):
-        note = self.db.lookup(datastream_id)
+        note = self.db.lookup(ID)
         if note.classname != "Note":
             abort(404)
             
