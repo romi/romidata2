@@ -94,14 +94,6 @@ if __name__ == "__main__":
     print("Scanning device:   %s" % args.scanning_device)
     print("Scan path:         %s" % scan_path.short_name)
 
-    newscan = new_scan(db,
-                       factory,
-                       crop.id,
-                       person_names,
-                       args.camera,
-                       args.scanning_device,
-                       scan_path)
-    newscan.store()
     
     zone = crop.zone
     
@@ -115,6 +107,17 @@ if __name__ == "__main__":
         print("Importing")
         print("=========")
         print("Scan:              %s" % scan_id)
+
+        newscan = new_scan(db,
+                           factory,
+                           crop.id,
+                           person_names,
+                           args.camera,
+                           args.scanning_device,
+                           scan_path)
+        newscan.store()
+        crop.add_scan(newscan)
+        
         fsdb_scan = fsdb.get_scan(scan_id)
         if not fsdb_scan:
             print("Didn't find scan %s: skipping" % scan_id)
