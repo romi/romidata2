@@ -3,6 +3,7 @@ from os.path import abspath
 import argparse
 from datetime import datetime, timedelta
 import json
+import statistics
 
 import dateutil.parser
 
@@ -70,25 +71,68 @@ if __name__ == "__main__":
 
     results = db.file_read_json(plant_analysis.results_file)
     plants = results.get("plants", [])
+    num_plants = 0
+    num_dates = 0
     
     with open(args.files[0], 'r+') as f:
         lines = f.read().splitlines()
-        for i in range(len(lines)):
-            line = lines[i]
-            values = line.split(' ')
-            plant = plants[i]
-            plant_observation = db.lookup(plant['observation_unit'])
-            date = start_date
-            curve = []
-            for value in values:
-                point = {'date': date.isoformat(), 'value': float(value) }
-                curve.append(point)
-                date += timedelta(days=1)
 
-            results = { 'curve': curve }
+        num_plants = len(lines)
+        date_values = []
+        dates = []
+
+        for plant_index in range(num_plants):
+            line = lines[plant_index]
+            values = line.split(' ')
+            
+            if num_dates == 0:
+                num_dates = len(values)
+                dates = [0] * num_dates
+                date_values = [None] * num_dates
+                date = start_date
+                for date_index in range(num_dates):
+                    dates[date_index] = date.isoformat()
+                    date_values[date_index] = [0] * num_plants
+                    date += timedelta(days=1)
+                
+            if num_dates != len(values):
+                raise ValueError("Not all curves have the same length!")
+            
+            for date_index in range(num_dates):
+                date_values[date_index][plant_index] = float(values[date_index])
+                
+
+        avg = [0] * num_dates
+        stdev = [0] * num_dates
+        for date_index in range(len(date_values)):
+            a = date_values[date_index]
+            avg[date_index] = statistics.mean(a)
+            stdev[date_index] = statistics.stdev(a)
+
+        #print("Values")
+        #print(date_values)
+        #print("Avg")
+        #print(avg)
+        #print("Stdev")
+        #print(stdev)
+            
+        for plant_index in range(num_plants):
+            plant = plants[plant_index]
+            plant_observation = db.lookup(plant['observation_unit'])
             growth_analysis = proto.get_analysis("plant_growth")
             growth_analysis.observation_unit = plant_observation
             growth_analysis.state = IAnalysis.STATE_FINISHED
+            
+            curve = []
+            for date_index in range(num_dates):
+                point = {'date': dates[date_index],
+                         'value': date_values[date_index][plant_index],
+                         'mean': avg[date_index],
+                         'stdev': stdev[date_index] }
+                curve.append(point)
+            result = { 'curve': curve }
+            #print("Curve %d" % plant_index)
+            #print(result)
             
             relpath = db.analysis_filepath(growth_analysis, "results", "json")
             output_file = db.new_file(farm.id,
@@ -97,6 +141,6 @@ if __name__ == "__main__":
                                       "results",
                                       relpath,
                                       "application/json")
-            db.file_store_text(output_file, json.dumps(results, indent=4))
+            db.file_store_text(output_file, json.dumps(result, indent=4))
             db.store(growth_analysis)
             

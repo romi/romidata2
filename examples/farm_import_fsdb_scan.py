@@ -136,7 +136,7 @@ if __name__ == "__main__":
             raise ValueError("Can't find images directory")
         images = images_fileset.get_files()
         for image in images:
-            print("Importing %s" % image.filename)
+            #print("Importing %s" % image.filename)
             data = image.read_raw()
             relpath = db.scan_filepath(newscan, image.id, "jpg")
             image_file = db.new_file(farm.id, "scan", newscan.id,
