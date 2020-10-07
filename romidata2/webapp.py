@@ -52,12 +52,12 @@ class FarmList(RomiResource):
 
 def cropImage(db, crop):
     # By default, use the farm's photo
-    farm = obj.context
+    farm = crop.context
     image = farm.photo.id if farm.photo else ""
     
     mostRecentData = None
     
-    for scan in obj.scans:
+    for scan in crop.scans:
         for analysis in scan.analyses:
             if (analysis.short_name == "stitching"
                 and analysis.state == IAnalysis.STATE_FINISHED):
