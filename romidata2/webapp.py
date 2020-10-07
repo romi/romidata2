@@ -50,6 +50,23 @@ class FarmList(RomiResource):
                 'photo': farm.photo.id if farm.photo else "" })
         return response
 
+def cropImage(db, crop):
+    # By default, use the farm's photo
+    farm = obj.context
+    image = farm.photo.id if farm.photo else ""
+    
+    mostRecentData = None
+    
+    for scan in obj.scans:
+        for analysis in scan.analyses:
+            if (analysis.short_name == "stitching"
+                and analysis.state == IAnalysis.STATE_FINISHED):
+                if (not mostRecentData or scan.date > mostRecentData):
+                    results = db.file_read_json(analysis.results_file)
+                    image = results.cropped_map
+                    mostRecentData = scan.date
+    return image
+            
     
 class FarmInfo(RomiResource):
     def __init__(self, app):
@@ -68,7 +85,9 @@ class FarmInfo(RomiResource):
             'photo': farm.photo.id if farm.photo else "",
             'license': farm.license,
             'people': [ p.serialize() for p in farm.people ],
-            'crops': [{"id": obj.id, "short_name": obj.short_name}
+            'crops': [{"id": obj.id,
+                       "short_name": obj.short_name,
+                       "photo": cropImage(self.db, obj)}
                       for obj in farm.observation_units
                       if obj.type == "crop" ] }#,
             #'zones': [{"id": obj.id, "short_name": obj.short_name} for obj in farm.zones ] }
