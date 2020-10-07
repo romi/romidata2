@@ -63,8 +63,9 @@ def cropImage(db, crop):
                 and analysis.state == IAnalysis.STATE_FINISHED):
                 if (not mostRecentData or scan.date > mostRecentData):
                     results = db.file_read_json(analysis.results_file)
-                    image = results.cropped_map
-                    mostRecentData = scan.date
+                    if 'cropped_map' in results: 
+                        image = results['cropped_map']
+                        mostRecentData = scan.date
     return image
             
     
